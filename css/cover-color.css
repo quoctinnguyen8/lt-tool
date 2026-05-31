@@ -848,7 +848,7 @@ header p {
 }
 .instruction-box ul {
     list-style-type: square;
-    margin-left: 20px;
+    padding-left: 20px;
     margin-top: 6px;
     display: flex;
     flex-direction: column;

@@ -202,18 +202,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (savedLightBg) {
             viewportOrig.classList.add('light-bg');
             viewportResult.classList.add('light-bg');
+            const previewBox = document.querySelector('.preview-viewport-box');
+            if (previewBox) previewBox.classList.add('light-bg');
         }
         
         lightBgToggle.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
             localStorage.setItem('lt_resize_light_bg', isChecked);
+            const previewBox = document.querySelector('.preview-viewport-box');
             if (isChecked) {
                 viewportOrig.classList.add('light-bg');
                 viewportResult.classList.add('light-bg');
+                if (previewBox) previewBox.classList.add('light-bg');
             } else {
                 viewportOrig.classList.remove('light-bg');
                 viewportResult.classList.remove('light-bg');
+                if (previewBox) previewBox.classList.remove('light-bg');
             }
+            drawCanvases(); // Redraw grid separator lines to apply dynamic contrast change
         });
     }
     
@@ -709,6 +715,7 @@ function drawCanvases() {
     if (!originalImage) return;
     
     const count = Math.max(1, Math.floor(originalImage.naturalWidth / frameWidth));
+    const isLightBg = lightBgToggle && lightBgToggle.checked;
     
     // 1. Draw original canvas
     const ctxOrig = canvasOrig.getContext('2d');
@@ -716,7 +723,7 @@ function drawCanvases() {
     ctxOrig.drawImage(originalImage, 0, 0);
     
     if (gridEnabled && count > 1) {
-        ctxOrig.strokeStyle = 'rgba(255, 51, 51, 0.85)'; // retro transparent red
+        ctxOrig.strokeStyle = isLightBg ? 'rgba(180, 0, 0, 0.95)' : 'rgba(255, 51, 51, 0.85)'; // retro deep red in light bg
         ctxOrig.lineWidth = 1;
         ctxOrig.setLineDash([3, 3]);
         
@@ -743,7 +750,7 @@ function drawCanvases() {
     });
     
     if (gridEnabled && count > 1) {
-        ctxRes.strokeStyle = 'rgba(255, 215, 0, 0.85)'; // golden yellow divider
+        ctxRes.strokeStyle = isLightBg ? 'rgba(0, 80, 200, 0.95)' : 'rgba(255, 215, 0, 0.85)'; // blue divider in light bg
         ctxRes.lineWidth = 1;
         ctxRes.setLineDash([3, 3]);
         
