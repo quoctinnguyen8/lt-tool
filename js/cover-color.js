@@ -241,6 +241,30 @@ document.addEventListener('DOMContentLoaded', () => {
         processImage();
     });
     
+    // Light background toggle
+    const lightBgToggle = document.getElementById('lightBgToggle');
+    if (lightBgToggle) {
+        // Load initial state
+        const savedLightBg = localStorage.getItem('lt_recolor_light_bg') === 'true';
+        lightBgToggle.checked = savedLightBg;
+        if (savedLightBg) {
+            viewportOrig.classList.add('light-bg');
+            viewportResult.classList.add('light-bg');
+        }
+        
+        lightBgToggle.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            localStorage.setItem('lt_recolor_light_bg', isChecked);
+            if (isChecked) {
+                viewportOrig.classList.add('light-bg');
+                viewportResult.classList.add('light-bg');
+            } else {
+                viewportOrig.classList.remove('light-bg');
+                viewportResult.classList.remove('light-bg');
+            }
+        });
+    }
+
     // Close popover on click outside
     window.addEventListener('click', handleOutsideClick);
     

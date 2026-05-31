@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Canvas Extender - Ling Thú Tool</title>
+    <link rel="stylesheet" href="css/resize-frame.css">
+</head>
+<body class="crt">
+    <div class="container">
+        <!-- Retro Header -->
+        <header class="pixel-box neon-border">
+            <h1>Sprite Extender</h1>
+            <p>=== CÔNG CỤ THAY ĐỔI KHUNG HÌNH / PAD SPRITE SHEET ===</p>
+        </header>
+
+        <!-- Navigation -->
+        <div class="retro-nav">
+            <a href="index.html" class="back-link">
+                &lt;&lt; [QUAY LẠI TRANG CHỦ]
+            </a>
+        </div>
+
+        <!-- Main App Layout -->
+        <div class="app-layout">
+            
+            <!-- Left Column: Workspaces (Canvas Viewports & Upload) -->
+            <div class="workspace-panel">
+                
+                <!-- Sample Sprites & File Upload -->
+                <div class="pixel-box">
+                    <h2 class="sidebar-section-title" style="font-size: 0.9rem; margin-bottom: 12px; border-bottom: none;">
+                        <span>1. TẢI ẢNH LÊN HOẶC CHỌN MẪU</span>
+                    </h2>
+                    <div style="display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                        <!-- Sample Bar -->
+                        <div class="sample-bar" style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-family: var(--font-pixel); font-size: 0.7rem; white-space: nowrap;">SPRITE MẪU:</span>
+                            <div class="sample-items" id="sampleItems">
+                                <!-- Loaded dynamically via JS -->
+                            </div>
+                        </div>
+                        
+                        <!-- Dropzone -->
+                        <div class="dropzone" id="dropzone" style="flex: 1; min-width: 280px; padding: 12px 15px; border-width: 3px;">
+                            <input type="file" id="fileInput" accept="image/*" multiple>
+                            <p style="font-size: 0.75rem; margin-bottom: 0;">[ KÉO THẢ HOẶC CLICK CHỌN NHIỀU ẢNH ]</p>
+                        </div>
+                    </div>    
+                    <!-- Batch Image List (Initially Hidden) -->
+                    <div id="batchListSection" style="display: none; margin-top: 15px; border-top: 2px dashed var(--border-pixel); padding-top: 15px;">
+                        <span style="font-family: var(--font-pixel); font-size: 0.65rem; color: var(--accent-gold); display: block; margin-bottom: 8px;">DANH SÁCH ẢNH TRONG HÀNG LOẠT (CLICK ĐỂ XEM):</span>
+                        <div id="batchGrid" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+                    </div>
+                </div>
+
+                <!-- Editor (Canvases Side-by-Side) -->
+                <div class="pixel-box gold-border">
+                    <div class="editor-grid">
+                        
+                        <!-- Left Canvas: Original -->
+                        <div class="canvas-card">
+                            <div class="canvas-header">
+                                <span class="canvas-title">SPRITE SHEET GỐC</span>
+                                <span class="canvas-dimensions" id="origDim">0 x 0</span>
+                            </div>
+                            <div class="canvas-viewport" id="viewportOrig">
+                                <canvas id="canvasOrig"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Canvas: Result -->
+                        <div class="canvas-card">
+                            <div class="canvas-header">
+                                <span class="canvas-title">SPRITE MỚI (KẾT QUẢ)</span>
+                                <span class="canvas-dimensions" id="resDim">0 x 0</span>
+                            </div>
+                            <div class="canvas-viewport" id="viewportResult">
+                                <canvas id="canvasResult"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Viewport Shared Controls (Zoom & Pan) -->
+                    <div class="viewport-controls" style="margin-top: 15px;">
+                        <div class="zoom-slider-container">
+                            <label for="zoomSlider">ZOOM:</label>
+                            <input type="range" id="zoomSlider" class="zoom-slider" min="100" max="2000" step="50" value="400">
+                            <span class="tolerance-value" id="zoomValue">400%</span>
+                        </div>
+                        <button class="viewport-btn" id="btnResetView">[ RESET XEM ANH ]</button>
+                    </div>
+                </div>
+
+                <!-- Instructions Panel -->
+                <div class="pixel-box" style="background-color: #0f1118; border-color: #2b3040;">
+                    <div class="instruction-box">
+                        <span style="font-family: var(--font-pixel); font-size: 0.75rem; color: var(--accent-gold); display: block; margin-bottom: 6px;">HƯỚNG DẪN SỬ DỤNG:</span>
+                        <ul>
+                            <li>Chọn một Sprite Mẫu ở trên hoặc Tải ảnh của bạn lên.</li>
+                            <li>Hệ thống sẽ **Tự động nhận diện kích thước frame** (Mặc định bằng Chiều cao ảnh).</li>
+                            <li>Nếu là Sprite Sheet chữ nhật hoặc hệ thống nhận diện sai, hãy điều chỉnh thủ công **KÍCH THƯỚC FRAME GỐC** (Width/Height) ở cột phải.</li>
+                            <li>Chọn kích thước frame mới bằng các nút hệ số co giãn **1.5x, 2x, 3x, 4x** hoặc nhập thủ công ô **KÍCH THƯỚC ĐÍCH**.</li>
+                            <li>Bấm chọn điểm neo trên lưới **3x3 ANCHOR GRID** để định vị vị trí của sprite cũ nằm ở đâu trong khung hình mới.</li>
+                            <li>Kiểm tra chuyển động chạy thử ở ô **PREVIEW HOẠT ẢNH** để đảm bảo nhân vật không bị lệch tâm hay rung lắc.</li>
+                            <li>Bật tính năng **HIỂN THỊ LƯỚI HƯỚNG DẪN (GRID)** để vẽ đường viền đỏ bao quanh từng frame.</li>
+                            <li>Tải thành phẩm bằng nút [TẢI ẢNH HIỆN TẠI VỀ] hoặc tải hàng loạt.</li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Control Sidebar -->
+            <div class="control-sidebar">
+                
+                <!-- Frame Resize Control Panel -->
+                <div class="pixel-box neon-border" style="flex-grow: 1;">
+                    <h2 class="sidebar-section-title">
+                        <span>CẤU HÌNH KHUNG HÌNH</span>
+                    </h2>
+                    
+                    <!-- Origin Frame Size Detect -->
+                    <div class="control-section-group">
+                        <span class="control-group-title">1. KÍCH THƯỚC FRAME GỐC:</span>
+                        <div class="input-inline-row">
+                            <div class="num-input-group">
+                                <label>Rộng (W)</label>
+                                <input type="number" id="frameWidthInput" class="num-input" value="16" min="1">
+                            </div>
+                            <div class="num-input-group">
+                                <label>Cao (H)</label>
+                                <input type="number" id="frameHeightInput" class="num-input" value="16" min="1">
+                            </div>
+                        </div>
+                        <span id="frameCountText" class="helper-text-neon">Đang phát hiện: 1 frame (16 x 16)</span>
+                    </div>
+
+                    <!-- Target Canvas Size & Multiplier -->
+                    <div class="control-section-group" style="margin-top: 15px;">
+                        <span class="control-group-title">2. KÍCH THƯỚC ĐÍCH MỚI:</span>
+                        <div class="multiplier-buttons">
+                            <button class="viewport-btn" data-mul="1">[ 1x ]</button>
+                            <button class="viewport-btn" data-mul="1.5">[ 1.5x ]</button>
+                            <button class="viewport-btn active" data-mul="2">[ 2x ]</button>
+                            <button class="viewport-btn" data-mul="3">[ 3x ]</button>
+                            <button class="viewport-btn" data-mul="4">[ 4x ]</button>
+                        </div>
+                        <div class="input-inline-row" style="margin-top: 10px;">
+                            <div class="num-input-group">
+                                <label>Rộng Đích</label>
+                                <input type="number" id="targetWidthInput" class="num-input" value="32" min="1">
+                            </div>
+                            <div class="num-input-group">
+                                <label>Cao Đích</label>
+                                <input type="number" id="targetHeightInput" class="num-input" value="32" min="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3x3 Anchor Selector Grid -->
+                    <div class="control-section-group" style="margin-top: 15px;">
+                        <span class="control-group-title">3. ĐIỂM NEO SPRITE GỐC:</span>
+                        <div style="display: flex; justify-content: center; margin-top: 10px;">
+                            <div class="anchor-grid" id="anchorGrid">
+                                <button class="anchor-btn" data-anchor="top-left" title="Neo Trên - Trái"></button>
+                                <button class="anchor-btn" data-anchor="top-center" title="Neo Trên - Giữa"></button>
+                                <button class="anchor-btn" data-anchor="top-right" title="Neo Trên - Phải"></button>
+                                
+                                <button class="anchor-btn" data-anchor="middle-left" title="Neo Giữa - Trái"></button>
+                                <button class="anchor-btn active" data-anchor="middle-center" title="Neo Giữa - Giữa (Mặc định)"></button>
+                                <button class="anchor-btn" data-anchor="middle-right" title="Neo Giữa - Phải"></button>
+                                
+                                <button class="anchor-btn" data-anchor="bottom-left" title="Neo Dưới - Trái"></button>
+                                <button class="anchor-btn" data-anchor="bottom-center" title="Neo Dưới - Giữa (Nhân vật đứng)"></button>
+                                <button class="anchor-btn" data-anchor="bottom-right" title="Neo Dưới - Phải"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Animation Preview Panel -->
+                    <div class="control-section-group" style="margin-top: 15px; border-top: 1px dashed var(--border-pixel); padding-top: 15px;">
+                        <span class="control-group-title">4. XEM THỬ HOẠT ẢNH (LOOP):</span>
+                        <div class="preview-area-row">
+                            <!-- Preview Canvas Viewport -->
+                            <div class="preview-viewport-box">
+                                <canvas id="previewCanvas" width="64" height="64"></canvas>
+                            </div>
+                            
+                            <div class="preview-controls-col" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                                <button class="viewport-btn" id="btnPlayPause" style="width: 100%; font-size: 0.75rem;">[ TẠM DỪNG ]</button>
+                                <div class="num-input-group">
+                                    <label style="font-size: 0.65rem; color: #8a92b2;">TỐC ĐỘ (FPS):</label>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="range" id="previewFps" min="1" max="20" value="8" style="flex: 1; height: 6px;">
+                                        <span id="previewFpsVal" style="font-family: var(--font-pixel); font-size: 0.7rem; min-width: 25px; text-align: right;">8fps</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="btn-block-action" style="margin-top: 20px; border-top: 1px dashed var(--border-pixel); padding-top: 15px;">
+                        <button class="retro-btn retro-btn-green" id="btnDownload">[ TẢI FILE HIỆN TẠI ]</button>
+                        <button class="retro-btn retro-btn-blue" id="btnDownloadBatch" style="display: none;">[ TẢI VỀ HÀNG LOẠT (0 ẢNH) ]</button>
+                    </div>
+                </div>
+
+                <!-- Presets Panel -->
+                <div class="pixel-box gold-border">
+                    <h2 class="sidebar-section-title">
+                        <span>MẪU THIẾT LẬP (PRESETS)</span>
+                    </h2>
+                    <div class="presets-section">
+                        <div class="preset-save-box">
+                            <input type="text" id="presetNameInput" class="preset-input" placeholder="Tên thiết lập (ví dụ: Nhân 2x Neo Dưới)">
+                            <button class="retro-btn retro-btn-gold btn-small" id="btnSavePreset">[ LƯU ]</button>
+                        </div>
+                        <div class="presets-container" id="presetsContainer">
+                            <div style="color: #6c758f; text-align: center; padding: 20px 0; font-size: 0.9rem;">Chưa có Preset nào được lưu.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Viewport Settings switches -->
+                <div class="pixel-box" style="padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Grid Helper Switch -->
+                    <div class="ui-switches" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>HIỂN THỊ LƯỚI FRAME (GRID):</span>
+                        <div class="toggle-retro" style="width: 70px;">
+                            <input type="checkbox" id="gridToggle" checked>
+                            <label for="gridToggle" class="toggle-slider"></label>
+                        </div>
+                    </div>
+                    <!-- CRT scanlines Switch -->
+                    <div class="ui-switches" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border-pixel); padding-top: 8px;">
+                        <span>HIỆU ỨNG MÀN HÌNH CRT (RETRO):</span>
+                        <div class="toggle-retro" style="width: 70px;">
+                            <input type="checkbox" id="crtToggle" checked>
+                            <label for="crtToggle" class="toggle-slider"></label>
+                        </div>
+                    </div>
+                    <!-- Light BG Switch -->
+                    <div class="ui-switches" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border-pixel); padding-top: 8px;">
+                        <span>NỀN XEM ẢNH SÁNG (LIGHT BG):</span>
+                        <div class="toggle-retro" style="width: 70px;">
+                            <input type="checkbox" id="lightBgToggle">
+                            <label for="lightBgToggle" class="toggle-slider"></label>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Notification Banner -->
+    <div class="notification-banner" id="notificationBanner">
+        THÔNG BÁO!
+    </div>
+
+    <script src="js/resize-frame.js"></script>
+</body>
+</html>

@@ -220,13 +220,20 @@
                     </div>
                 </div>
 
-                <!-- CRT / Scanline Control -->
-                <div class="pixel-box" style="padding: 10px;">
-                    <div class="ui-switches">
+                <!-- UI Switches (CRT & Light BG) -->
+                <div class="pixel-box" style="padding: 10px; display: flex; flex-direction: column; gap: 8px;">
+                    <div class="ui-switches" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>HIỆU ỨNG MÀN HÌNH CRT (RETRO):</span>
                         <div class="toggle-retro" style="width: 70px;">
                             <input type="checkbox" id="crtToggle" checked>
-                            <label for="crtToggle" class="toggle-slider" style="background-color: var(--accent-red); color: #fff; padding: 0 4px;"></label>
+                            <label for="crtToggle" class="toggle-slider"></label>
+                        </div>
+                    </div>
+                    <div class="ui-switches" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border-pixel); padding-top: 8px;">
+                        <span>NỀN XEM ẢNH SÁNG (LIGHT BG):</span>
+                        <div class="toggle-retro" style="width: 70px;">
+                            <input type="checkbox" id="lightBgToggle">
+                            <label for="lightBgToggle" class="toggle-slider"></label>
                         </div>
                     </div>
                 </div>

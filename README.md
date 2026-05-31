@@ -15,33 +15,35 @@ E:/LingThu/lt-tool/
 ├── README.md               # Tài liệu hướng dẫn dự án
 ├── index.html              # Trang chủ / Bảng điều khiển chọn công cụ
 ├── cover-color.html        # [Tool 1] Công cụ Đổi màu Sprite / Icon
+├── resize-frame.html       # [Tool 2] Công cụ Thay đổi Khung hình Sprite
 ├── css/
 │   ├── portal.css          # CSS dành riêng cho trang chủ index.html
-│   └── cover-color.css     # CSS dành riêng cho công cụ cover-color.html
+│   ├── cover-color.css     # CSS dành riêng cho công cụ cover-color.html
+│   └── resize-frame.css    # CSS dành riêng cho công cụ resize-frame.html
 └── js/
-    └── cover-color.js      # JS xử lý logic cho công cụ cover-color.html
+    ├── cover-color.js      # JS xử lý logic cho công cụ cover-color.html
+    └── resize-frame.js     # JS xử lý logic cho công cụ resize-frame.html
 ```
 
 ---
 
-## 🎮 Công Cụ Hiện Có: Sprite Recolorer (Đổi Màu Sprite / Icon)
+## 🎮 Các Công Cụ Hiện Có
 
+### 1. Sprite Recolorer (Đổi Màu Sprite / Icon)
 Công cụ cho phép bạn nhanh chóng tạo ra các biến thể màu sắc khác nhau của một vật phẩm (vũ khí, trang bị, bình thuốc...) chỉ trong vài giây.
 
-### Các Tính Năng Nổi Bật:
-1. **Chia đôi màn hình (Side-by-Side Viewport)**:
-   - Bên trái hiển thị ảnh gốc, hỗ trợ công cụ hút màu (**Eyedropper 🧪**) trực tiếp trên ảnh.
-   - Bên phải hiển thị kết quả thay đổi thời gian thực.
-   - Hỗ trợ **Đồng bộ Zoom & Pan**: cả hai khung ảnh tự động thu phóng và di chuyển song song.
-2. **Cơ chế Đổi Màu Toàn Bộ (Global Recolor)**:
-   - **Nhuộm màu (Tint)**: Phủ đều màu mục tiêu, hỗ trợ checkbox **"Phủ lên màu trắng"** hữu ích khi xử lý ảnh mặt nạ xám (grayscale templates).
-   - **Xoay màu (Hue Shift)**: Dịch chuyển dải màu gốc trên bánh xe HSL từ `-180°` đến `180°`, **bảo toàn hoàn hảo độ tương phản màu sắc gốc** đối với vật phẩm đa sắc (ví dụ: ngọc đỏ gắn trên lưỡi thép xanh).
-3. **Cơ chế Đổi Từng Màu (Rule-based Recolor)**:
-   - Thiết lập nhiều quy tắc đổi màu đồng thời với thông số độ lệch màu (**Tolerance**) và chế độ bảo toàn bóng (**Shading Mode**).
-   - Tích hợp **Lưới gợi ý Màu khớp chủ đạo** tự động quét ảnh và cho phép click chọn nhanh. Lưới sẽ **tự động ẩn các màu đã được chọn** giúp bạn không bị trùng lặp.
-4. **Lưu/Tải Mẫu Màu (Presets)**:
-   - Lưu trữ các quy tắc đổi màu hoặc cấu hình Hue Shift hiện tại thành preset thông qua `localStorage`.
-5. **Xử lý hàng loạt (Batch Processing)**:
-   - Chọn và tải lên hàng loạt nhiều tệp hình ảnh.
-   - Xem trước và đổi màu đồng loạt theo cấu hình.
-   - Tải về hàng loạt dưới dạng file nén hoặc tải rời có độ trễ chống chặn pop-up.
+* **Chia đôi màn hình (Side-by-Side Viewport)**: Hỗ trợ hút màu trực quan (**Eyedropper 🧪**), đồng bộ Zoom & Pan giữa hai viewport.
+* **Cơ chế Đổi Màu Toàn Bộ**: Nhuộm đơn sắc (có tính năng phủ trắng) hoặc **Xoay màu HSL (Hue Shift)** để giữ nguyên độ tương phản của vật phẩm đa sắc.
+* **Cơ chế Đổi Từng Màu**: Thiết lập quy tắc đổi màu theo vùng độc lập kèm chỉ số sai lệch (Tolerance) và chế độ bảo toàn bóng (Shading).
+* **Lọc màu khớp thông minh**: Lưới gợi ý màu khớp tự động ẩn các màu đã được đưa vào quy tắc để tránh trùng lặp.
+* **Presets & Batch Processing**: Lưu preset vào localStorage, tải và xuất ảnh hàng loạt chống trình duyệt chặn pop-up.
+
+### 2. Sprite Canvas Extender (Thay đổi Khung hình Sprite)
+Công cụ chuyên dụng giúp mở rộng ranh giới khung hình (canvas padding) cho từng frame riêng lẻ trong Sprite Sheet, phục vụ việc vẽ thêm các hiệu ứng mà không làm lệch căn lề của sprite ban đầu.
+
+* **Phân tách frame & Tự phát hiện**: Đọc ảnh và tự động nhận diện kích thước frame dựa trên chiều cao (ví dụ: ảnh 64x16 sẽ được cắt thành 4 frame 16x16).
+* **Lưới Neo 3x3 trực quan**: Cho phép chọn neo sprite gốc tại 9 vị trí (Ví dụ: neo **Dưới-Giữa** cho nhân vật đứng, **Giữa-Giữa** cho vật phẩm bay, v.v.).
+* **Hệ số co giãn nhanh**: Chọn nhanh các hệ số mở rộng `1.5x`, `2x`, `3x`, `4x` hoặc tự nhập kích thước đích tuỳ chọn.
+* **Trình xem thử hoạt ảnh loop (Animation Preview)**: Xem thử chuyển động lập tức với thanh trượt điều chỉnh tốc độ (FPS), giúp kiểm tra độ đồng đều của các frame sau co giãn.
+* **Lưới hướng dẫn (Grid Helper)**: Hiển thị các vạch nét đứt ngăn cách frame tĩnh để dễ canh lề.
+* **Presets & Batch Processing**: Lưu thiết lập và co giãn đồng loạt hàng trăm sprite sheet chỉ với một click.
