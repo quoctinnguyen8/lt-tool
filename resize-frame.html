@@ -182,20 +182,33 @@
                     <!-- Animation Preview Panel -->
                     <div class="control-section-group" style="margin-top: 15px; border-top: 1px dashed var(--border-pixel); padding-top: 15px;">
                         <span class="control-group-title">4. XEM THỬ HOẠT ẢNH (LOOP):</span>
-                        <div class="preview-area-row">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 10px;">
                             <!-- Preview Canvas Viewport -->
                             <div class="preview-viewport-box">
                                 <canvas id="previewCanvas" width="128" height="128"></canvas>
                             </div>
                             
-                            <div class="preview-controls-col" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
-                                <button class="viewport-btn" id="btnPlayPause" style="width: 100%; font-size: 0.75rem;">[ TẠM DỪNG ]</button>
+                            <!-- Preview Controls Stack -->
+                            <div style="width: 100%; display: flex; flex-direction: column; gap: 8px;">
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="viewport-btn" id="btnPlayPause" style="flex: 1; font-size: 0.75rem;">[ TẠM DỪNG ]</button>
+                                    <button class="viewport-btn" id="btnResetPreviewZoom" style="font-size: 0.75rem;">[ RESET ZOOM ]</button>
+                                </div>
+                                
                                 <div class="num-input-group">
-                                    <label style="font-size: 0.65rem; color: #8a92b2;">TỐC ĐỘ (FPS):</label>
-                                    <div style="display: flex; align-items: center; gap: 8px;">
-                                        <input type="range" id="previewFps" min="1" max="20" value="8" style="flex: 1; height: 6px;">
-                                        <span id="previewFpsVal" style="font-family: var(--font-pixel); font-size: 0.7rem; min-width: 25px; text-align: right;">8fps</span>
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <label style="font-size: 0.65rem; color: #8a92b2;">TỐC ĐỘ (FPS):</label>
+                                        <span id="previewFpsVal" style="font-family: var(--font-pixel); font-size: 0.7rem; text-align: right;">8fps</span>
                                     </div>
+                                    <input type="range" id="previewFps" min="1" max="20" value="8" style="width: 100%; height: 6px;">
+                                </div>
+
+                                <div class="num-input-group">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <label style="font-size: 0.65rem; color: #8a92b2;">ZOOM PREVIEW:</label>
+                                        <span id="previewZoomVal" style="font-family: var(--font-pixel); font-size: 0.7rem; text-align: right;">150%</span>
+                                    </div>
+                                    <input type="range" id="previewZoomSlider" min="50" max="600" step="10" value="150" style="width: 100%; height: 6px;">
                                 </div>
                             </div>
                         </div>
@@ -211,21 +224,7 @@
                     </div>
                 </div>
 
-                <!-- Presets Panel -->
-                <div class="pixel-box gold-border">
-                    <h2 class="sidebar-section-title">
-                        <span>MẪU THIẾT LẬP (PRESETS)</span>
-                    </h2>
-                    <div class="presets-section">
-                        <div class="preset-save-box">
-                            <input type="text" id="presetNameInput" class="preset-input" placeholder="Tên thiết lập (ví dụ: Nhân 2x Neo Dưới)">
-                            <button class="retro-btn retro-btn-gold btn-small" id="btnSavePreset">[ LƯU ]</button>
-                        </div>
-                        <div class="presets-container" id="presetsContainer">
-                            <div style="color: #6c758f; text-align: center; padding: 20px 0; font-size: 0.9rem;">Chưa có Preset nào được lưu.</div>
-                        </div>
-                    </div>
-                </div>
+
 
                 <!-- Viewport Settings switches -->
                 <div class="pixel-box" style="padding: 10px; display: flex; flex-direction: column; gap: 8px;">

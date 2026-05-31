@@ -46,4 +46,4 @@ Công cụ chuyên dụng giúp mở rộng ranh giới khung hình (canvas padd
 * **Hệ số co giãn nhanh**: Chọn nhanh các hệ số mở rộng `1.5x`, `2x`, `3x`, `4x` hoặc tự nhập kích thước đích tuỳ chọn.
 * **Trình xem thử hoạt ảnh loop (Animation Preview)**: Xem thử chuyển động lập tức với thanh trượt điều chỉnh tốc độ (FPS), giúp kiểm tra độ đồng đều của các frame sau co giãn.
 * **Lưới hướng dẫn (Grid Helper)**: Hiển thị các vạch nét đứt ngăn cách frame tĩnh để dễ canh lề.
-* **Presets & Batch Processing**: Lưu thiết lập và co giãn đồng loạt hàng trăm sprite sheet chỉ với một click.
+* **Batch Processing**: Co giãn đồng loạt hàng loạt sprite sheet chỉ với một click.

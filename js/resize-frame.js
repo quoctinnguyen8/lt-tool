@@ -55,6 +55,7 @@ let lastFrameTime = 0;
 let currentFrameIndex = 0;
 let cachedProcessedFrames = []; // holds pre-rendered canvases of processed frames
 let animationFrameId = null;
+let previewZoom = 150; // in percentage
 
 // Batch mode variables
 let imageFiles = [];
@@ -88,10 +89,6 @@ const previewFpsVal = document.getElementById('previewFpsVal');
 const btnDownload = document.getElementById('btnDownload');
 const btnDownloadBatch = document.getElementById('btnDownloadBatch');
 
-const presetNameInput = document.getElementById('presetNameInput');
-const btnSavePreset = document.getElementById('btnSavePreset');
-const presetsContainer = document.getElementById('presetsContainer');
-
 const gridToggle = document.getElementById('gridToggle');
 const crtToggle = document.getElementById('crtToggle');
 const lightBgToggle = document.getElementById('lightBgToggle');
@@ -106,7 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initViewportInteraction(viewportResult);
     initFileUpload();
     initSamples();
-    renderPresets();
     
     // Bind General DOM events
     zoomSlider.addEventListener('input', (e) => {
@@ -117,7 +113,6 @@ document.addEventListener('DOMContentLoaded', () => {
     btnResetView.addEventListener('click', resetView);
     btnDownload.addEventListener('click', downloadResult);
     btnDownloadBatch.addEventListener('click', downloadBatch);
-    btnSavePreset.addEventListener('click', savePreset);
     
     // Input parameters binding
     frameWidthInput.addEventListener('input', () => {
@@ -196,19 +191,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (lightBgToggle) {
-        // Load initial state
-        const savedLightBg = localStorage.getItem('lt_resize_light_bg') === 'true';
-        lightBgToggle.checked = savedLightBg;
-        if (savedLightBg) {
-            viewportOrig.classList.add('light-bg');
-            viewportResult.classList.add('light-bg');
-            const previewBox = document.querySelector('.preview-viewport-box');
-            if (previewBox) previewBox.classList.add('light-bg');
-        }
+        lightBgToggle.checked = false;
         
         lightBgToggle.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
-            localStorage.setItem('lt_resize_light_bg', isChecked);
             const previewBox = document.querySelector('.preview-viewport-box');
             if (isChecked) {
                 viewportOrig.classList.add('light-bg');
@@ -221,6 +207,39 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             drawCanvases(); // Redraw grid separator lines to apply dynamic contrast change
         });
+    }
+    
+    // Preview Zoom Slider
+    const previewZoomSlider = document.getElementById('previewZoomSlider');
+    if (previewZoomSlider) {
+        previewZoomSlider.addEventListener('input', (e) => {
+            previewZoom = parseInt(e.target.value);
+            updatePreviewTransform();
+        });
+    }
+    
+    // Reset Preview Zoom Button
+    const btnResetPreviewZoom = document.getElementById('btnResetPreviewZoom');
+    if (btnResetPreviewZoom) {
+        btnResetPreviewZoom.addEventListener('click', () => {
+            previewZoom = 150;
+            updatePreviewTransform();
+        });
+    }
+
+    // Mouse wheel scroll zoom on Preview Box
+    const previewBox = document.querySelector('.preview-viewport-box');
+    if (previewBox) {
+        previewBox.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomStep = 10;
+            if (e.deltaY < 0) {
+                previewZoom = Math.min(600, previewZoom + zoomStep);
+            } else {
+                previewZoom = Math.max(50, previewZoom - zoomStep);
+            }
+            updatePreviewTransform();
+        }, { passive: false });
     }
     
     // Start animation loop
@@ -245,6 +264,22 @@ function updateTransforms() {
     canvasResult.style.transform = transformString;
     zoomValue.textContent = zoom + "%";
     zoomSlider.value = zoom;
+}
+
+function updatePreviewTransform() {
+    const previewCanvas = document.getElementById('previewCanvas');
+    const previewZoomVal = document.getElementById('previewZoomVal');
+    const previewZoomSlider = document.getElementById('previewZoomSlider');
+    
+    if (previewCanvas) {
+        previewCanvas.style.transform = `scale(${previewZoom / 100})`;
+    }
+    if (previewZoomVal) {
+        previewZoomVal.textContent = previewZoom + "%";
+    }
+    if (previewZoomSlider) {
+        previewZoomSlider.value = previewZoom;
+    }
 }
 
 function resetView() {
@@ -797,22 +832,19 @@ function animationLoop(timestamp) {
     if (elapsed >= interval) {
         lastFrameTime = timestamp - (elapsed % interval);
         
-        // Draw frame onto preview canvas
+        // Draw frame onto preview canvas at 1:1 pixel size
         const pCtx = previewCanvas.getContext('2d');
-        pCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+        if (previewCanvas.width !== targetWidth || previewCanvas.height !== targetHeight) {
+            previewCanvas.width = targetWidth;
+            previewCanvas.height = targetHeight;
+            updatePreviewTransform();
+        }
+        pCtx.clearRect(0, 0, targetWidth, targetHeight);
         
         const activeFrame = cachedProcessedFrames[currentFrameIndex];
         if (activeFrame) {
-            pCtx.imageSmoothingEnabled = false; // keep retro sharp pixels
-            
-            // Scale and center frame inside preview box
-            const scale = Math.min(previewCanvas.width / targetWidth, previewCanvas.height / targetHeight);
-            const drawW = targetWidth * scale;
-            const drawH = targetHeight * scale;
-            const x = (previewCanvas.width - drawW) / 2;
-            const y = (previewCanvas.height - drawH) / 2;
-            
-            pCtx.drawImage(activeFrame, x, y, drawW, drawH);
+            pCtx.imageSmoothingEnabled = false;
+            pCtx.drawImage(activeFrame, 0, 0);
         }
         
         currentFrameIndex = (currentFrameIndex + 1) % cachedProcessedFrames.length;
@@ -895,113 +927,7 @@ async function downloadBatch() {
     showNotification(`Đã tải về thành công ${imageFiles.length} ảnh!`);
 }
 
-// Preset management
-function savePreset() {
-    const name = presetNameInput.value.trim();
-    if (!name) {
-        showNotification("Vui lòng nhập tên cho Preset!", "error");
-        return;
-    }
-    
-    const presetData = {
-        mode: 'resize',
-        frameWidth: frameWidth,
-        frameHeight: frameHeight,
-        targetWidth: targetWidth,
-        targetHeight: targetHeight,
-        activeAnchor: activeAnchor
-    };
-    
-    const savedPresets = JSON.parse(localStorage.getItem('lt_sprite_resize_presets') || '{}');
-    savedPresets[name] = presetData;
-    localStorage.setItem('lt_sprite_resize_presets', JSON.stringify(savedPresets));
-    
-    presetNameInput.value = '';
-    showNotification(`Đã lưu thiết lập "${name}" thành công!`);
-    renderPresets();
-}
 
-function renderPresets() {
-    presetsContainer.innerHTML = '';
-    const savedPresets = JSON.parse(localStorage.getItem('lt_sprite_resize_presets') || '{}');
-    const names = Object.keys(savedPresets);
-    
-    if (names.length === 0) {
-        presetsContainer.innerHTML = `<div style="color: #6c758f; text-align: center; padding: 20px 0; font-size: 0.9rem;">Chưa có Preset nào được lưu.</div>`;
-        return;
-    }
-    
-    names.forEach(name => {
-        const item = document.createElement('div');
-        item.className = 'preset-item';
-        
-        item.innerHTML = `
-            <span class="preset-name">${name}</span>
-            <div class="preset-actions">
-                <button class="btn-preset-delete" data-name="${name}">[XÓA]</button>
-            </div>
-        `;
-        
-        item.addEventListener('click', (e) => {
-            if (e.target.classList.contains('btn-preset-delete')) return;
-            loadPreset(name);
-        });
-        
-        item.querySelector('.btn-preset-delete').addEventListener('click', (e) => {
-            e.stopPropagation();
-            deletePreset(name);
-        });
-        
-        presetsContainer.appendChild(item);
-    });
-}
-
-function loadPreset(name) {
-    const savedPresets = JSON.parse(localStorage.getItem('lt_sprite_resize_presets') || '{}');
-    const presetData = savedPresets[name];
-    if (!presetData) return;
-    
-    frameWidth = presetData.frameWidth || 16;
-    frameHeight = presetData.frameHeight || 16;
-    targetWidth = presetData.targetWidth || 32;
-    targetHeight = presetData.targetHeight || 32;
-    activeAnchor = presetData.activeAnchor || 'middle-center';
-    
-    frameWidthInput.value = frameWidth;
-    frameHeightInput.value = frameHeight;
-    targetWidthInput.value = targetWidth;
-    targetHeightInput.value = targetHeight;
-    
-    // Update Multiplier buttons active state
-    deactivateMultiplierButtons();
-    multiplierButtons.forEach(btn => {
-        const factor = parseFloat(btn.dataset.mul);
-        if (Math.round(frameWidth * factor) === targetWidth && Math.round(frameHeight * factor) === targetHeight) {
-            btn.classList.add('active');
-        }
-    });
-    
-    // Update Anchor buttons active state
-    anchorGridButtons.forEach(btn => {
-        if (btn.dataset.anchor === activeAnchor) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-    
-    updateFrameCountText();
-    processImage();
-    showNotification(`Đã áp dụng mẫu "${name}"!`);
-}
-
-function deletePreset(name) {
-    const savedPresets = JSON.parse(localStorage.getItem('lt_sprite_resize_presets') || '{}');
-    delete savedPresets[name];
-    localStorage.setItem('lt_sprite_resize_presets', JSON.stringify(savedPresets));
-    renderPresets();
-    showNotification(`Đã xóa mẫu "${name}".`);
-}
 
 // Notification Banner Trigger
 function showNotification(message, type = 'success') {

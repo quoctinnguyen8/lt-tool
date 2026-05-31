@@ -738,16 +738,27 @@ header p {
 }
 
 .preview-viewport-box {
-    width: 120px;
-    height: 120px;
+    width: 200px;
+    height: 200px;
     border: 3px solid var(--border-pixel);
-    background-color: #1e1e24;
+    background-color: #0b0c10; /* Solid dark workspace background */
     display: flex;
     align-items: center;
     justify-content: center;
     overflow: hidden;
     position: relative;
-    /* Checkerboard transparency background */
+}
+
+.preview-viewport-box.light-bg {
+    background-color: #d1d5db; /* Solid light workspace background */
+}
+
+.preview-viewport-box canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    transform-origin: center center;
+    background-color: #1e1e24;
+    /* Checkerboard transparency background on the canvas itself */
     background-image: 
         linear-gradient(45deg, #18181f 25%, transparent 25%), 
         linear-gradient(-45deg, #18181f 25%, transparent 25%), 
@@ -755,22 +766,17 @@ header p {
         linear-gradient(-45deg, transparent 75%, #18181f 75%);
     background-size: 16px 16px;
     background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    outline: 1px dashed rgba(255, 255, 255, 0.4);
 }
 
-.preview-viewport-box.light-bg {
+.preview-viewport-box.light-bg canvas {
     background-color: #ebede9;
     background-image: 
         linear-gradient(45deg, #c7cfcc 25%, transparent 25%), 
         linear-gradient(-45deg, #c7cfcc 25%, transparent 25%), 
         linear-gradient(45deg, transparent 75%, #c7cfcc 75%), 
         linear-gradient(-45deg, transparent 75%, #c7cfcc 75%);
-}
-
-.preview-viewport-box canvas {
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    max-width: 100%;
-    max-height: 100%;
+    outline: 1px dashed rgba(0, 0, 0, 0.35);
 }
 
 /* Instruction Text Box */
