@@ -775,7 +775,7 @@ header p {
 
 /* Instruction Text Box */
 .instruction-box {
-    font-size: 0.8rem;
+    font-size: 1.1rem;
     line-height: 1.5;
     color: #a4dddb;
 }
@@ -786,7 +786,4 @@ header p {
     display: flex;
     flex-direction: column;
     gap: 6px;
-}
-.instruction-box li {
-    font-size: 0.75rem;
 }

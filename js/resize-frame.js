@@ -322,6 +322,7 @@ function handleImageLoaded(img) {
     
     canvasOrig.width = img.naturalWidth;
     canvasOrig.height = img.naturalHeight;
+    origDim.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
     
     const ctx = canvasOrig.getContext('2d');
     ctx.clearRect(0, 0, canvasOrig.width, canvasOrig.height);
@@ -370,6 +371,7 @@ function drawSampleSprite(key) {
         
         canvasOrig.width = img.naturalWidth;
         canvasOrig.height = img.naturalHeight;
+        origDim.textContent = `${img.naturalWidth} x ${img.naturalHeight}`;
         
         const ctx = canvasOrig.getContext('2d');
         ctx.clearRect(0, 0, canvasOrig.width, canvasOrig.height);
@@ -610,6 +612,7 @@ function setActiveImage(id) {
         
         canvasOrig.width = item.img.naturalWidth;
         canvasOrig.height = item.img.naturalHeight;
+        origDim.textContent = `${item.img.naturalWidth} x ${item.img.naturalHeight}`;
         
         const ctx = canvasOrig.getContext('2d');
         ctx.clearRect(0, 0, canvasOrig.width, canvasOrig.height);
