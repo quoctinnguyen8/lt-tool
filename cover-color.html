@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sprite Recolorer - Ling Thú Tool</title>
+    <link rel="stylesheet" href="css/cover-color.css">
+</head>
+<body class="crt">
+    <div class="container">
+        <!-- Retro Header -->
+        <header class="pixel-box neon-border">
+            <h1>Sprite Recolorer</h1>
+            <p>=== CÔNG CỤ TẠO BIẾN THỂ MÀU CHO ITEM GAME ===</p>
+        </header>
+
+        <!-- Navigation -->
+        <div class="retro-nav">
+            <a href="index.html" class="back-link">
+                &lt;&lt; [QUAY LẠI TRANG CHỦ]
+            </a>
+        </div>
+
+        <!-- Main App Layout -->
+        <div class="app-layout">
+            
+            <!-- Left Column: Workspaces (Canvas Viewports & Upload) -->
+            <div class="workspace-panel">
+                
+                <!-- Sample Sprites & File Upload -->
+                <div class="pixel-box">
+                    <h2 class="sidebar-section-title" style="font-size: 0.9rem; margin-bottom: 12px; border-bottom: none;">
+                        <span>1. TẢI ẢNH LÊN HOẶC CHỌN MẪU</span>
+                    </h2>
+                    <div style="display: flex; gap: 20px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                        <!-- Sample Bar -->
+                        <div class="sample-bar" style="display: flex; align-items: center; gap: 10px;">
+                            <span style="font-family: var(--font-pixel); font-size: 0.7rem; white-space: nowrap;">SPRITE MẪU:</span>
+                            <div class="sample-items" id="sampleItems">
+                                <!-- Loaded dynamically via JS -->
+                            </div>
+                        </div>
+                        
+                        <!-- Dropzone -->
+                        <div class="dropzone" id="dropzone" style="flex: 1; min-width: 280px; padding: 12px 15px; border-width: 3px;">
+                            <input type="file" id="fileInput" accept="image/*" multiple>
+                            <p style="font-size: 0.75rem; margin-bottom: 0;">[ KÉO THẢ HOẶC CLICK CHỌN NHIỀU ẢNH ]</p>
+                        </div>
+                    </div>    
+                        <!-- Batch Image List (Initially Hidden) -->
+                        <div id="batchListSection" style="display: none; margin-top: 15px; border-top: 2px dashed var(--border-pixel); padding-top: 15px;">
+                            <span style="font-family: var(--font-pixel); font-size: 0.65rem; color: var(--accent-gold); display: block; margin-bottom: 8px;">DANH SÁCH ẢNH TRONG HÀNG LOẠT (CLICK ĐỂ PREVIEW):</span>
+                            <div id="batchGrid" style="display: flex; gap: 10px; flex-wrap: wrap;"></div>
+                        </div>
+                </div>
+
+                <!-- Editor (Canvases Side-by-Side) -->
+                <div class="pixel-box gold-border">
+                    <div class="editor-grid">
+                        
+                        <!-- Left Canvas: Original -->
+                        <div class="canvas-card">
+                            <div class="canvas-header">
+                                <span class="canvas-title">SPRITE GỐC (HÚT MÀU)</span>
+                                <span class="canvas-dimensions" id="origDim">0 x 0</span>
+                            </div>
+                            <div class="canvas-viewport" id="viewportOrig">
+                                <canvas id="canvasOrig"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Right Canvas: Result -->
+                        <div class="canvas-card">
+                            <div class="canvas-header">
+                                <span class="canvas-title">SPRITE MỚI (KẾT QUẢ)</span>
+                                <span class="canvas-dimensions" id="resDim">0 x 0</span>
+                            </div>
+                            <div class="canvas-viewport" id="viewportResult">
+                                <canvas id="canvasResult"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Viewport Shared Controls (Zoom & Pan) -->
+                    <div class="viewport-controls" style="margin-top: 15px;">
+                        <div class="zoom-slider-container">
+                            <label for="zoomSlider">ZOOM:</label>
+                            <input type="range" id="zoomSlider" class="zoom-slider" min="100" max="2000" step="50" value="400">
+                            <span class="tolerance-value" id="zoomValue">400%</span>
+                        </div>
+                        <button class="viewport-btn" id="btnResetView">[ RESET XEM ANH ]</button>
+                    </div>
+                </div>
+
+                <!-- Instructions Panel -->
+                <div class="pixel-box" style="background-color: #0f1118; border-color: #2b3040;">
+                    <div class="instruction-box">
+                        <span style="font-family: var(--font-pixel); font-size: 0.75rem; color: var(--accent-gold); display: block; margin-bottom: 6px;">HƯỚNG DẪN SỬ DỤNG:</span>
+                        <ul>
+                            <li>Nhấp chọn một Sprite Mẫu ở trên hoặc Tải ảnh của bạn lên.</li>
+                            <li>Bấm nút [+ THÊM QUY TẮC MÀU] ở cột bên phải.</li>
+                            <li>Nhấp chọn biểu tượng Ống hút màu (Eyedropper 🧪) ở quy tắc màu, sau đó Click trực tiếp lên vùng màu trên Sprite Gốc để hút màu.</li>
+                            <li>Nhấp vào ô MÀU MỚI để chọn một màu từ bảng 46 màu cổ điển chuẩn game.</li>
+                            <li>Điều chỉnh TOLERANCE nếu muốn đổi màu cả các pixel bóng gần giống, chọn chế độ SHADE để giữ đổ bóng tự nhiên hoặc EXACT để tô đè phẳng.</li>
+                            <li>Tải thành phẩm bằng nút [TẢI SPRITE MỚI VỀ].</li>
+                        </ul>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Control Sidebar -->
+            <div class="control-sidebar">
+                
+                <!-- Rules Manager Panel -->
+                <div class="pixel-box neon-border" style="flex-grow: 1;">
+                    <h2 class="sidebar-section-title">
+                        <span>BỘ ĐỔI MÀU</span>
+                        <button class="viewport-btn btn-small" id="btnAddRule" style="color: var(--accent-neon); border-color: var(--accent-neon);">[+ THÊM]</button>
+                    </h2>
+                    
+                    <!-- Mode Selector Tabs -->
+                    <div class="recolor-mode-tabs">
+                        <button class="viewport-btn" id="btnModeGlobal">[ ĐỔI TOÀN BỘ ]</button>
+                        <button class="viewport-btn active" id="btnModeRules">[ ĐỔI TỪNG MÀU ]</button>
+                    </div>
+
+                    <!-- Global Tint Manager Box (Initially Hidden) -->
+                    <div id="globalTintBox" style="display: none; margin-bottom: 20px; background-color: var(--bg-panel-light); border: 2px solid var(--border-pixel); padding: 15px;">
+                        <span style="font-family: var(--font-pixel); font-size: 0.65rem; color: var(--accent-gold); display: block; margin-bottom: 10px;">CƠ CHẾ ĐỔI TOÀN BỘ:</span>
+                        
+                        <!-- Sub-mode Selector for Global -->
+                        <div class="recolor-mode-tabs" style="margin-bottom: 12px; padding-bottom: 8px; gap: 4px; border-bottom: 1px dashed var(--border-pixel);">
+                            <button class="viewport-btn active" id="btnSubModeTint" style="font-size: 0.65rem; padding: 4px 0; min-height: auto;">[ NHUỘM MÀU ]</button>
+                            <button class="viewport-btn" id="btnSubModeHueShift" style="font-size: 0.65rem; padding: 4px 0; min-height: auto;">[ XOAY MÀU ]</button>
+                        </div>
+
+                        <!-- Sub-mode: Tint Container -->
+                        <div id="globalTintSubContainer">
+                            <div class="rule-color-pickers" style="margin-bottom: 15px;">
+                                <div class="color-input-group">
+                                    <label>MÀU TOÀN CỤC MỚI</label>
+                                    <div class="picker-row">
+                                        <div class="color-preview-box" id="globalReplacePreview" style="background-color: #172038; cursor: pointer;" title="Chọn màu mới toàn cục"></div>
+                                        <input type="text" class="color-hex-input" id="globalReplaceInput" value="#172038" readonly style="cursor: pointer; width: 100px;" title="Chọn màu mới toàn cục">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="rule-adjustments" style="border-top: none; padding-top: 0; margin-bottom: 10px;">
+                                <div class="adjustment-row">
+                                    <label>PHỦ LÊN MÀU TRẮNG:</label>
+                                    <div class="toggle-retro">
+                                        <input type="checkbox" id="globalColorizeWhite">
+                                        <label for="globalColorizeWhite" class="toggle-slider"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sub-mode: Hue Shift Container -->
+                        <div id="globalHueShiftSubContainer" style="display: none; margin-bottom: 15px;">
+                            <div class="rule-adjustments" style="border-top: none; padding-top: 0;">
+                                <div class="adjustment-row">
+                                    <label>GÓC XOAY HUE:</label>
+                                    <div class="tolerance-input-container">
+                                        <input type="range" class="tolerance-slider" id="globalHueShiftAngle" min="-180" max="180" value="0">
+                                        <span class="tolerance-value" id="globalHueShiftAngleVal">0°</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Shared Global Strength -->
+                        <div class="rule-adjustments" style="border-top: 1px dashed var(--border-pixel); padding-top: 10px; margin-top: 10px;">
+                            <div class="adjustment-row">
+                                <label id="globalStrengthLabel">MỨC ĐỘ PHA (TINT):</label>
+                                <div class="tolerance-input-container">
+                                    <input type="range" class="tolerance-slider" id="globalTintStrength" min="0" max="100" value="100">
+                                    <span class="tolerance-value" id="globalTintStrengthVal">100%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dominant Colors -->
+                    <div class="dominant-colors-bar" id="dominantColorsBar" style="display: none; margin-bottom: 15px; border-bottom: 1px dashed var(--border-pixel); padding-bottom: 10px;">
+                        <span style="font-family: var(--font-pixel); font-size: 0.65rem; color: #8a92b2; display: block; margin-bottom: 6px;">MÀU KHỚP TRONG SPRITE (CLICK ĐỂ CHỌN):</span>
+                        <div id="dominantColorsGrid" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+                    </div>
+
+                    <!-- Rules container -->
+                    <div class="rules-list" id="rulesList">
+                        <!-- Loaded dynamically via JS -->
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="btn-block-action">
+                        <button class="retro-btn retro-btn-green" id="btnDownload">[ TẢI SPRITE HIỆN TẠI ]</button>
+                        <button class="retro-btn retro-btn-blue" id="btnDownloadBatch" style="display: none;">[ TẢI VỀ HÀNG LOẠT (0 ẢNH) ]</button>
+                        <button class="retro-btn retro-btn-red btn-small" id="btnClearRules">[ XÓA TẤT CẢ QUY TẮC ]</button>
+                    </div>
+                </div>
+
+                <!-- Presets Panel -->
+                <div class="pixel-box gold-border">
+                    <h2 class="sidebar-section-title">
+                        <span>MẪU MÀU (PRESETS)</span>
+                    </h2>
+                    <div class="presets-section">
+                        <div class="preset-save-box">
+                            <input type="text" id="presetNameInput" class="preset-input" placeholder="Tên mẫu (ví dụ: Hệ Lửa)">
+                            <button class="retro-btn retro-btn-gold btn-small" id="btnSavePreset">[ LƯU ]</button>
+                        </div>
+                        <div class="presets-container" id="presetsContainer">
+                            <!-- Loaded dynamically via JS -->
+                            <div style="color: #6c758f; text-align: center; padding: 20px 0; font-size: 0.9rem;">Chưa có Preset nào được lưu.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CRT / Scanline Control -->
+                <div class="pixel-box" style="padding: 10px;">
+                    <div class="ui-switches">
+                        <span>HIỆU ỨNG MÀN HÌNH CRT (RETRO):</span>
+                        <div class="toggle-retro" style="width: 70px;">
+                            <input type="checkbox" id="crtToggle" checked>
+                            <label for="crtToggle" class="toggle-slider" style="background-color: var(--accent-red); color: #fff; padding: 0 4px;"></label>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Floating Palette Selector Popover -->
+    <div class="palette-popover" id="palettePopover">
+        <div class="palette-grid-title">CHỌN MÀU MỚI (RETRO 46)</div>
+        <div class="palette-grid" id="paletteGrid">
+            <!-- Loaded dynamically via JS -->
+        </div>
+    </div>
+
+    <!-- Notification Banner -->
+    <div class="notification-banner" id="notificationBanner">
+        THÔNG BÁO!
+    </div>
+
+    <script src="js/cover-color.js"></script>
+</body>
+</html>
