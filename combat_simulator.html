@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ling Thú - Trình Giả Lập & Cân Bằng Chiến Đấu</title>
+    <link rel="stylesheet" href="css/combat_simulator.css">
+</head>
+<body class="crt">
+    <div class="container">
+        <!-- Retro Header -->
+        <header class="pixel-box neon-border">
+            <h1>Combat Simulator</h1>
+            <p>=== TRÌNH GIẢ LẬP & CÂN BẰNG CHIẾN ĐẤU LING THÚ ===</p>
+        </header>
+
+        <!-- Navigation -->
+        <div class="retro-nav">
+            <a href="index.html" class="back-link">
+                &lt;&lt; [QUAY LẠI TRANG CHỦ]
+            </a>
+        </div>
+
+        <!-- Main App Layout -->
+        <div class="app-layout">
+            
+            <!-- Gladiator Configuration Section -->
+            <div class="gladiator-grid">
+                
+                <!-- Pet Card (Gladiator A) -->
+                <div class="pixel-box" id="card-a">
+                    <div class="card-header">
+                        <span class="card-title">🛡️ PET ĐỒNG HÀNH</span>
+                        <span id="badge-a" class="badge-element badge-scissors">Hệ Kéo</span>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="input-group">
+                            <label>Chọn Preset Hệ nguyên tố:</label>
+                            <div class="presets" id="presets-a">
+                                <button type="button" class="preset-btn" data-preset="SCISSORS" onclick="applyPreset('a', 'SCISSORS')">Hệ Kéo</button>
+                                <button type="button" class="preset-btn" data-preset="ROCK" onclick="applyPreset('a', 'ROCK')">Hệ Búa</button>
+                                <button type="button" class="preset-btn" data-preset="PAPER" onclick="applyPreset('a', 'PAPER')">Hệ Bao</button>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 2.2fr 1fr; gap: 15px;">
+                            <div class="input-group">
+                                <label for="name-a">Tên Pet:</label>
+                                <input type="text" id="name-a" class="input-control" value="Pet Hệ Kéo">
+                            </div>
+                            <div class="input-group">
+                                <label for="level-a">Cấp độ (Lv):</label>
+                                <input type="number" id="level-a" class="input-control" value="1" min="1" max="100" onchange="updateStatsFromLevel('a')">
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="input-group">
+                                <label for="hp-a">HP Cơ Bản (Lv.1):</label>
+                                <input type="number" id="hp-a" class="input-control" value="109" min="1" onchange="updateStatsFromLevel('a')">
+                            </div>
+                            <div class="input-group">
+                                <label for="element-a">Hệ nguyên tố:</label>
+                                <select id="element-a" class="input-control" onchange="updateBadge('a'); updateStatsFromPreset('a');">
+                                    <option value="SCISSORS" selected>KÉO (Scissors)</option>
+                                    <option value="ROCK">BÚA (Rock)</option>
+                                    <option value="PAPER">BAO (Paper)</option>
+                                    <option value="NONE">KHÔNG (None)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                            <div class="input-group">
+                                <label for="atk-a">Công Cơ Bản:</label>
+                                <input type="number" id="atk-a" class="input-control" value="17" min="0" onchange="updateStatsFromLevel('a')">
+                            </div>
+                            <div class="input-group">
+                                <label for="def-a">Thủ Cơ Bản:</label>
+                                <input type="number" id="def-a" class="input-control" value="8" min="0" onchange="updateStatsFromLevel('a')">
+                            </div>
+                            <div class="input-group">
+                                <label for="luck-a">M.Mắn Cơ Bản:</label>
+                                <input type="number" id="luck-a" class="input-control" value="5" min="0" onchange="updateStatsFromLevel('a')">
+                            </div>
+                        </div>
+
+                        <!-- Growth Rates display for Pet (Read-only) -->
+                        <div class="growth-override-box" style="border-top: 1px dashed var(--border-pixel); padding-top: 15px; margin-top: 5px;">
+                            <span style="font-family: var(--font-pixel); font-size: 0.75rem; color: var(--accent-gold); display: block; margin-bottom: 10px; text-transform: uppercase;">
+                                📈 Chỉ số tăng thêm khi lên cấp (Hệ nguyên tố):
+                            </span>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; text-align: center; font-family: var(--font-pixel); font-size: 0.8rem;">
+                                <div class="input-group">
+                                    <span style="color: #8a92b2; font-size: 0.65rem;">HP+/Cấp</span>
+                                    <strong id="hp-growth-a" style="color: var(--accent-neon); margin-top: 4px;">+14</strong>
+                                </div>
+                                <div class="input-group">
+                                    <span style="color: #8a92b2; font-size: 0.65rem;">ATK+/Cấp</span>
+                                    <strong id="atk-growth-a" style="color: var(--accent-neon); margin-top: 4px;">+3</strong>
+                                </div>
+                                <div class="input-group">
+                                    <span style="color: #8a92b2; font-size: 0.65rem;">DEF+/Cấp</span>
+                                    <strong id="def-growth-a" style="color: var(--accent-neon); margin-top: 4px;">+1</strong>
+                                </div>
+                                <div class="input-group">
+                                    <span style="color: #8a92b2; font-size: 0.65rem;">LUCK+/Cấp</span>
+                                    <strong id="luck-growth-a" style="color: var(--accent-neon); margin-top: 4px;">+2</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Calculated Stats Row for Pet -->
+                        <div style="background-color: var(--bg-panel-light); border: 2px solid var(--border-pixel); padding: 8px 12px; margin-top: 5px; font-family: var(--font-pixel); font-size: 0.75rem; text-align: center; color: var(--accent-neon);">
+                            <span>Chỉ số thực tế ở hiện tại (Lv.<span id="display-level-a">1</span>):</span><br>
+                            <strong style="color: var(--text-color);">
+                                HP: <span id="actual-hp-a">109</span> | 
+                                ATK: <span id="actual-atk-a">17</span> | 
+                                DEF: <span id="actual-def-a">8</span> (<span id="actual-reduction-a">10.1</span>% Giảm) | 
+                                LUCK: <span id="actual-luck-a">5</span> (<span id="actual-passive-a">2.9</span>% Nội tại)
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Monster Card (Gladiator B) -->
+                <div class="pixel-box" id="card-b">
+                    <div class="card-header">
+                        <span class="card-title">👾 MONSTER (QUÁI VẬT)</span>
+                        <span id="badge-b" class="badge-element badge-rock">Hệ Búa</span>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="input-group">
+                            <label>Chọn Preset Hệ nguyên tố:</label>
+                            <div class="presets" id="presets-b">
+                                <button type="button" class="preset-btn" data-preset="SCISSORS" onclick="applyPreset('b', 'SCISSORS')">Hệ Kéo</button>
+                                <button type="button" class="preset-btn" data-preset="ROCK" onclick="applyPreset('b', 'ROCK')">Hệ Búa</button>
+                                <button type="button" class="preset-btn" data-preset="PAPER" onclick="applyPreset('b', 'PAPER')">Hệ Bao</button>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 2fr 1.1fr 1.3fr; gap: 15px;">
+                            <div class="input-group">
+                                <label for="name-b">Tên Quái vật:</label>
+                                <input type="text" id="name-b" class="input-control" value="Quái vật Hệ Búa">
+                            </div>
+                            <div class="input-group">
+                                <label for="level-b">Cấp độ (Lv):</label>
+                                <input type="number" id="level-b" class="input-control" value="1" min="1" max="100" onchange="updateStatsFromLevel('b')">
+                            </div>
+                            <div class="input-group">
+                                <label for="monster-type">Cấp bậc:</label>
+                                <select id="monster-type" class="input-control" onchange="updateStatsFromLevel('b')">
+                                    <option value="NORMAL" selected>Thường</option>
+                                    <option value="ELITE">Tinh Anh</option>
+                                    <option value="BOSS">Trùm Cuối</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div class="input-group">
+                                <label for="hp-b">HP Cơ Bản (Lv.1):</label>
+                                <input type="number" id="hp-b" class="input-control" value="138" min="1" onchange="updateStatsFromLevel('b')">
+                            </div>
+                            <div class="input-group">
+                                <label for="element-b">Hệ nguyên tố:</label>
+                                <select id="element-b" class="input-control" onchange="updateBadge('b'); updateStatsFromPreset('b');">
+                                    <option value="SCISSORS">KÉO (Scissors)</option>
+                                    <option value="ROCK" selected>BÚA (Rock)</option>
+                                    <option value="PAPER">BAO (Paper)</option>
+                                    <option value="NONE">KHÔNG (None)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                            <div class="input-group">
+                                <label for="atk-b">Công Cơ Bản:</label>
+                                <input type="number" id="atk-b" class="input-control" value="12" min="0" onchange="updateStatsFromLevel('b')">
+                            </div>
+                            <div class="input-group">
+                                <label for="def-b">Thủ Cơ Bản:</label>
+                                <input type="number" id="def-b" class="input-control" value="17" min="0" onchange="updateStatsFromLevel('b')">
+                            </div>
+                            <div class="input-group">
+                                <label for="luck-b">M.Mắn Cơ Bản:</label>
+                                <input type="number" id="luck-b" class="input-control" value="5" min="0" onchange="updateStatsFromLevel('b')">
+                            </div>
+                        </div>
+
+                        <!-- Custom Growth Section for Monster (Editable Overrides) -->
+                        <div class="growth-override-box" style="border-top: 1px dashed var(--border-pixel); padding-top: 15px; margin-top: 5px;">
+                            <span style="font-family: var(--font-pixel); font-size: 0.75rem; color: var(--accent-gold); display: block; margin-bottom: 10px; text-transform: uppercase;">
+                                ⚙️ Tốc độ tăng trưởng / cấp (Ghi đè):
+                            </span>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px;">
+                                <div class="input-group">
+                                    <label for="hp-growth-b" style="font-size: 0.65rem;">HP+/Cấp</label>
+                                    <input type="number" id="hp-growth-b" class="input-control" value="16" onchange="updateStatsFromLevel('b')" style="padding: 6px 8px; font-size: 0.85rem;">
+                                </div>
+                                <div class="input-group">
+                                    <label for="atk-growth-b" style="font-size: 0.65rem;">ATK+/Cấp</label>
+                                    <input type="number" id="atk-growth-b" class="input-control" value="2" onchange="updateStatsFromLevel('b')" style="padding: 6px 8px; font-size: 0.85rem;">
+                                </div>
+                                <div class="input-group">
+                                    <label for="def-growth-b" style="font-size: 0.65rem;">DEF+/Cấp</label>
+                                    <input type="number" id="def-growth-b" class="input-control" value="2" onchange="updateStatsFromLevel('b')" style="padding: 6px 8px; font-size: 0.85rem;">
+                                </div>
+                                <div class="input-group">
+                                    <label for="luck-growth-b" style="font-size: 0.65rem;">LUCK+/Cấp</label>
+                                    <input type="number" id="luck-growth-b" class="input-control" value="1" onchange="updateStatsFromLevel('b')" style="padding: 6px 8px; font-size: 0.85rem;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Calculated Stats Row for Monster -->
+                        <div style="background-color: var(--bg-panel-light); border: 2px solid var(--border-pixel); padding: 8px 12px; margin-top: 5px; font-family: var(--font-pixel); font-size: 0.75rem; text-align: center; color: var(--accent-neon);">
+                            <span>Chỉ số thực tế ở hiện tại (Lv.<span id="display-level-b">1</span>):</span><br>
+                            <strong style="color: var(--text-color);">
+                                HP: <span id="actual-hp-b">138</span> | 
+                                ATK: <span id="actual-atk-b">12</span> | 
+                                DEF: <span id="actual-def-b">17</span> (<span id="actual-reduction-b">17.7</span>% Giảm) | 
+                                LUCK: <span id="actual-luck-b">5</span> (<span id="actual-passive-b">2.9</span>% Nội tại)
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Elemental Stats Growth Reference Table -->
+            <div class="pixel-box gold-border">
+                <span class="growth-table-title">📊 BẢNG TĂNG TRƯỞNG CHỈ SỐ THEO HỆ NGUYÊN TỐ (MỖI CẤP ĐỘ)</span>
+                <div style="overflow-x: auto;">
+                    <table class="growth-table">
+                        <thead>
+                            <tr>
+                                <th>Hệ Nguyên Tố</th>
+                                <th>Mã Hệ</th>
+                                <th>HP Cơ Bản (Tăng/Cấp)</th>
+                                <th>ATK Cơ Bản (Tăng/Cấp)</th>
+                                <th>DEF Cơ Bản (Tăng/Cấp)</th>
+                                <th>LUCK Cơ Bản (Tăng/Cấp)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="color: var(--color-scissors); font-weight: bold;">Hệ Kéo</td>
+                                <td>SCISSORS</td>
+                                <td>109 <span class="stat-growth-val">(+14)</span></td>
+                                <td>17 <span class="stat-growth-val">(+3)</span></td>
+                                <td>8 <span class="stat-growth-val">(+1)</span></td>
+                                <td>5 <span class="stat-growth-val">(+2)</span></td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--color-rock); font-weight: bold;">Hệ Búa</td>
+                                <td>ROCK</td>
+                                <td>138 <span class="stat-growth-val">(+16)</span></td>
+                                <td>12 <span class="stat-growth-val">(+2)</span></td>
+                                <td>17 <span class="stat-growth-val">(+2)</span></td>
+                                <td>5 <span class="stat-growth-val">(+1)</span></td>
+                            </tr>
+                            <tr>
+                                <td style="color: var(--color-paper); font-weight: bold;">Hệ Bao</td>
+                                <td>PAPER</td>
+                                <td>115 <span class="stat-growth-val">(+15)</span></td>
+                                <td>15 <span class="stat-growth-val">(+2)</span></td>
+                                <td>10 <span class="stat-growth-val">(+2)</span></td>
+                                <td>5 <span class="stat-growth-val">(+3)</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="formula-info" style="margin-top: 12px; border-left-color: var(--accent-blue);">
+                    * <strong>Cơ chế tự động tăng chỉ số:</strong> Khi thay đổi Cấp độ (Level), hệ thống tự động thiết lập lại chỉ số thực tế <code>HP, ATK, DEF, LUCK</code> dựa trên chỉ số Cơ bản cộng với lượng tăng thêm theo cấp độ. Pet sử dụng lượng tăng trưởng cố định theo hệ nguyên tố, còn Quái vật có thể tự do chỉnh sửa trực tiếp tỉ lệ tăng trưởng (ghi đè) để thử nghiệm cân bằng.
+                </div>
+            </div>
+
+            <!-- Simulation Controls Panel -->
+            <div class="pixel-box gold-border control-panel">
+                <div class="simulation-settings">
+                    <div class="input-group" style="max-width: 140px;">
+                        <label for="turns-count">Số lượt đấu:</label>
+                        <input type="number" id="turns-count" class="input-control" value="10" min="1" max="100">
+                    </div>
+                    
+                    <div class="ui-switches-box">
+                        <div class="ui-switch-row">
+                            <span>HIỆU ỨNG MÀN HÌNH CRT:</span>
+                            <div class="toggle-retro">
+                                <input type="checkbox" id="crtToggle" checked>
+                                <label for="crtToggle" class="toggle-slider"></label>
+                            </div>
+                        </div>
+                        <div class="ui-switch-row">
+                            <span>CƠ CHẾ KHẮC CHẾ:</span>
+                            <div class="toggle-retro">
+                                <input type="checkbox" id="counterToggle" checked>
+                                <label for="counterToggle" class="toggle-slider"></label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" class="retro-btn retro-btn-green" onclick="runSimulation()">[ CHẠY MÔ PHỎNG ]</button>
+            </div>
+
+            <!-- Results Display and Battle Terminal Logs -->
+            <div class="results-grid">
+                
+                <!-- Battle Journal (Terminal Box) -->
+                <div class="pixel-box log-card">
+                    <div class="card-header">
+                        <span class="card-title">📋 NHẬT KÝ TRẬN ĐẤU</span>
+                    </div>
+                    <div class="log-scroll-area">
+                        <ul id="battle-log" class="log-list">
+                            <li class="log-item" style="color: #8a92b2; text-align: center; padding: 2rem 0;">
+                                [ Nhấn nút "CHẠY MÔ PHỎNG" để xem tiến trình trận đấu ]
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Final Outcome Summary -->
+                <div class="pixel-box neon-border summary-card">
+                    <div class="card-header">
+                        <span class="card-title">🏆 KẾT QUẢ CHUNG CUỘC</span>
+                    </div>
+                    
+                    <div id="outcome-box" class="outcome-box outcome-placeholder">
+                        CHƯA ĐẤU
+                    </div>
+
+                    <div class="health-bar-container">
+                        <div class="health-bar-label">
+                            <span id="label-name-a">Pet</span>
+                            <span id="label-hp-a">80 / 80 HP</span>
+                        </div>
+                        <div class="health-bar-outer">
+                            <div id="bar-hp-a" class="health-bar-inner"></div>
+                        </div>
+                    </div>
+
+                    <div class="health-bar-container">
+                        <div class="health-bar-label">
+                            <span id="label-name-b">Quái vật</span>
+                            <span id="label-hp-b">120 / 120 HP</span>
+                        </div>
+                        <div class="health-bar-outer">
+                            <div id="bar-hp-b" class="health-bar-inner"></div>
+                        </div>
+                    </div>
+
+                    <div class="formula-info">
+                        <strong>CÔNG THỨC CHIẾN ĐẤU CƠ BẢN:</strong><br>
+                        - Tỷ lệ giảm sát thương = 1 - 0.98^(DEF^0.8)<br>
+                        - Sát thương nhận = Max(1, ATK * (1 - Tỷ lệ giảm))<br>
+                        - Tỷ lệ kích hoạt Nội tại = 1 - 0.99^(LUCK^0.75)<br>
+                        <strong>NỘI TẠI HỆ NGUYÊN TỐ (Tỷ lệ kích hoạt):</strong><br>
+                        - Kéo (Scissors): Bạo kích, gây thêm 50% sát thương (Tổng 150%). Nếu HP từ 75% trở lên thì sát thương chí mạng là 2x (Tổng 200%)<br>
+                        - Búa (Rock): Đòn tiếp theo giảm 75% sát thương nhận (giảm 95% nếu HP < 25%)<br>
+                        - Bao (Paper): Hồi 50% sát thương đòn tiếp theo nhận (hồi 75% nếu HP < 30%)<br>
+                        <strong>CƠ CHẾ KHẮC CHẾ HỆ NGUYÊN TỐ:</strong><br>
+                        - Kéo gặp Bao: Kéo tăng 8% sát thương gây ra<br>
+                        - Bao gặp Búa: Bao tăng ngẫu nhiên [1-10] toàn thuộc tính (riêng HP tăng gấp 10 lần giá trị đó)<br>
+                        - Búa gặp Kéo: Búa tăng 10% DEF (DEF * 1.10, tăng giảm sát thương)<br>
+                        (Mở file <code>js/combat_simulator.js</code> để cấu hình các hàm)
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Footer Info -->
+        <footer style="text-align: center; margin-top: 30px; font-family: var(--font-pixel); font-size: 0.65rem; color: #525c7a;">
+            LING THÚ PROJECT &copy; 2026 - ALL RIGHTS RETRO
+        </footer>
+    </div>
+
+    <script src="js/combat_simulator.js"></script>
+</body>
+</html>
