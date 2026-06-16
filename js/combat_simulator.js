@@ -1,21 +1,120 @@
 // Preset data with base and growth stats
+// Lưu ý cân bằng:
+//   - Số lượt mục tiêu (trung bình 3 đối thủ, có khắc chế):
+//     + Hệ Kéo: Lv.1 ≈ 8 lượt, Lv.40 ≈ 16 lượt
+//     + Hệ Búa: Lv.1 ≈ 9 lượt, Lv.40 ≈ 20 lượt
+//     + Hệ Bao:  Lv.1 ≈ 8.5 lượt, Lv.40 ≈ 18 lượt
+//   - Tỉ lệ thắng mục tiêu (Lv ≥ 10, có khắc chế, đánh trước):
+//     + Bên khắc chế: 70 - 80 %
+//     + Bên bị khắc chế: 30 - 40 %
 const PRESETS = {
-    'SCISSORS': { 
-        name: 'Hệ Kéo', 
-        base: { hp: 110, atk: 17, def: 8, luck: 5 },
-        growth: { hp: 18, atk: 2.3, def: 1, luck: 2 }
+    'SCISSORS': {
+        name: 'Hệ Kéo',
+        // Kéo: ATK cao (mạnh về chí mạng), HP & DEF thấp
+        base: { hp: 100, atk: 15, def: 7, luck: 5 },
+        growth: { hp: 18, atk: 1.5, def: 1.3, luck: 1.6 }
     },
     'ROCK': { 
         name: 'Hệ Búa', 
-        base: { hp: 140, atk: 12, def: 17, luck: 5 },
-        growth: { hp: 19, atk: 1.6, def: 1.8, luck: 1 }
+        // Búa: HP/DEF cao (tank), ATK thấp
+        base: { hp: 110, atk: 14, def: 10, luck: 5 },
+        growth: { hp: 18, atk: 1.6, def: 1.2, luck: 1.2 }
     },
-    'PAPER': { 
-        name: 'Hệ Bao', 
-        base: { hp: 120, atk: 15, def: 10, luck: 5 },
-        growth: { hp: 18, atk: 1.9, def: 1.6, luck: 2.2 }
+    'PAPER': {
+        name: 'Hệ Bao',
+        // Bao: cân bằng, thiên về hồi phục
+        base: { hp: 100, atk: 15, def: 10, luck: 5 },
+        growth: { hp: 18, atk: 1.6, def: 1.4, luck: 1.5 }
     }
 };
+
+// =================== CƠ CHẾ KHẮC CHẾ ===================
+// Mục tiêu: chênh lệch tỉ lệ thắng giữa "khắc đánh trước" và "bị khắc đánh trước" ~ 35-40% (Lv ≥ 10).
+// Cơ chế mới: BẢNG GIÁ TRỊ CỤ THỂ THEO LEVEL (piecewise) - cho phép điều chỉnh từng giai đoạn game.
+//
+// Quy ước:
+//   - Bảng chứa giá trị CỘNG DỒN cho từng level cụ thể (1, 5, 10, 15, 20, 25, 30, 35, 40).
+//   - Giữa 2 level liên tiếp: nội suy tuyến tính.
+//   - Level < 1: 0, Level > 40: dùng giá trị Lv.40.
+//   - Có thể tinh chỉnh TỪNG giá trị để cân bằng riêng từng kèo.
+// --------------------------------------------------------
+// 1) KÉO gặp BAO -> kéo tăng sát thương (damageMultiplier)
+// 2) BÚA gặp KÉO -> búa tăng phòng ngự (cộng dồn)
+// 3) BAO gặp BÚA -> bao tăng toàn chỉ số (HP x10)
+const COUNTER_CONFIG = {
+    // scissors_vs_paper: dmgMult bonus (cộng vào 1.0)
+    // Mục tiêu: Kéo vs Bao 70-90%, giảm Lv.10-15 từ 0.12-0.14 xuống 0.10-0.12
+    scissors_vs_paper: {
+        1:  0.00,
+        5:  0.00,
+        10: 0.14,  // Lv.10: +14%
+        15: 0.15,
+        20: 0.15,
+        25: 0.15,
+        30: 0.16,
+        35: 0.17,
+        40: 0.18
+    },
+    // rock_vs_scissors: DEF bonus (cộng dồn)
+    // BỎ HẲN (0) để Búa vs Kéo giảm từ 100% xuống 85-90%
+    rock_vs_scissors: {
+        1:  0.0,
+        5:  0.0,
+        10: 0.0,
+        15: 0.0,
+        20: 0.0,
+        25: 0.0,
+        30: 0.0,
+        35: 0.0,
+        40: 0.0
+    },
+    // paper_vs_rock: HP và LUCK tăng độc lập
+    // Tăng hp/luck Lv.20-40 để Bao vs Búa không vượt 90%
+    paper_vs_rock: {
+        hp: {
+            1:  0,
+            5:  0,
+            10: 8,
+            15: 12,
+            20: 14,   // Lv.20: +14
+            25: 16,
+            30: 18,
+            35: 20,
+            40: 22    // Lv.40: +22 (giảm từ 30)
+        },
+        luck: {
+            1:  0.0,
+            5:  0.0,
+            10: 1.0,
+            15: 1.5,
+            20: 1.5,
+            25: 2.0,
+            30: 2.0,
+            35: 2.5,
+            40: 2.5
+        }
+    }
+};
+
+function counterBonus(configEntry, level) {
+    if (!configEntry) return 0;
+    const levelKeys = Object.keys(configEntry).map(Number).sort((a, b) => a - b);
+    if (level <= levelKeys[0]) return configEntry[levelKeys[0]];
+    if (level >= levelKeys[levelKeys.length - 1]) return configEntry[levelKeys[levelKeys.length - 1]];
+
+    // Tìm 2 level bao quanh và nội suy tuyến tính
+    for (let i = 0; i < levelKeys.length - 1; i++) {
+        const low = levelKeys[i];
+        const high = levelKeys[i + 1];
+        if (level >= low && level <= high) {
+            const lowVal = configEntry[low];
+            const highVal = configEntry[high];
+            const t = (level - low) / (high - low);
+            return lowVal + (highVal - lowVal) * t;
+        }
+    }
+    return configEntry[levelKeys[levelKeys.length - 1]];
+}
 
 // Hệ số nhân chỉ số cho các cấp bậc quái vật (Thường, Tinh Anh, Trùm Cuối)
 // Người chơi có thể tự do chỉnh sửa các hệ số này để giả lập/thử nghiệm độ khó.
@@ -152,11 +251,14 @@ function getDamageReduction(def) {
 
 /**
  * Tính tỉ lệ phần trăm kích hoạt nội tại (%) dựa vào chỉ số LUCK.
- * Công thức: % kích hoạt = 1 - 0.99^(luck^0.75)
+ * Công thức MỚI: % kích hoạt = 1 - 0.993^(luck^0.75)
+ * - Giảm crit chance ~30% so với cũ (0.99) để giảm snowball crit
+ * - Lv.10 luck=18: 6.1% (cũ 8.6%)
+ * - Lv.40 luck=63: 14.6% (cũ 20.2%)
  */
 function getPassiveChance(luck) {
     if (luck <= 0) return 0;
-    const chance = 1 - Math.pow(0.99, Math.pow(luck, 0.75));
+    const chance = 1 - Math.pow(0.993, Math.pow(luck, 0.75));
     return Math.max(0, chance);
 }
 
@@ -293,64 +395,59 @@ function runSimulation() {
     let counterLogs = [];
 
     if (useCounter) {
-        // Kéo gặp bao: kéo tăng tối đa 8% sát thương (Lv.1: 0%, Lv.40: 8%)
+        // Kéo gặp bao: kéo tăng sát thương theo level (chia 3 giai đoạn)
         if (charA.element === 'SCISSORS' && charB.element === 'PAPER') {
-            const intensity = 0.08 * ((charA.level - 1) / 39);
+            const intensity = counterBonus(COUNTER_CONFIG.scissors_vs_paper, charA.level);
             charA.damageMultiplier = 1 + intensity;
             if (intensity > 0) {
                 counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charA.name} (Hệ Kéo - Lv.${charA.level})</strong> gặp <strong>${charB.name} (Hệ Bao)</strong>: ${charA.name} được tăng ${(intensity * 100).toFixed(1)}% sát thương gây ra!`);
             }
         }
         if (charB.element === 'SCISSORS' && charA.element === 'PAPER') {
-            const intensity = 0.08 * ((charB.level - 1) / 39);
+            const intensity = counterBonus(COUNTER_CONFIG.scissors_vs_paper, charB.level);
             charB.damageMultiplier = 1 + intensity;
             if (intensity > 0) {
                 counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charB.name} (Hệ Kéo - Lv.${charB.level})</strong> gặp <strong>${charA.name} (Hệ Bao)</strong>: ${charB.name} được tăng ${(intensity * 100).toFixed(1)}% sát thương gây ra!`);
             }
         }
 
-        // Bao gặp búa: bao tăng ngẫu nhiên [x-10] giá trị toàn bộ thuộc tính (HP vẫn x10)
-        // x = level hiện tại chia 10, tối thiểu 1 (làm tròn lên)
+        // Bao gặp búa: bao tăng HP và LUCK (2 giá trị độc lập, không có tỉ lệ cố định)
         if (charA.element === 'PAPER' && charB.element === 'ROCK') {
-            const lvl = charA.level;
-            const k = 0.2 + 2.8 * ((lvl - 1) / 39);
-            const hpGain = k * 10;
+            const hpGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.hp, charA.level);
+            const luckGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.luck, charA.level);
             charA.maxHp += hpGain;
             charA.hp += hpGain;
-            charA.atk += k;
-            charA.def += k;
-            charA.luck += k;
-            counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charA.name} (Hệ Bao - Lv.${charA.level})</strong> gặp <strong>${charB.name} (Hệ Búa)</strong>: ${charA.name} nhận +${k.toFixed(2)} toàn thuộc tính (HP +${hpGain.toFixed(1)}, ATK +${k.toFixed(2)}, DEF +${k.toFixed(2)}, LUCK +${k.toFixed(2)})!`);
+            charA.luck += luckGain;
+            if (hpGain > 0 || luckGain > 0) {
+                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charA.name} (Hệ Bao - Lv.${charA.level})</strong> gặp <strong>${charB.name} (Hệ Búa)</strong>: ${charA.name} nhận +${hpGain} HP, +${luckGain.toFixed(2)} LUCK!`);
+            }
         }
         if (charB.element === 'PAPER' && charA.element === 'ROCK') {
-            const lvl = charB.level;
-            const k = 0.2 + 2.8 * ((lvl - 1) / 39);
-            const hpGain = k * 10;
+            const hpGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.hp, charB.level);
+            const luckGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.luck, charB.level);
             charB.maxHp += hpGain;
             charB.hp += hpGain;
-            charB.atk += k;
-            charB.def += k;
-            charB.luck += k;
-            counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charB.name} (Hệ Bao - Lv.${charB.level})</strong> gặp <strong>${charA.name} (Hệ Búa)</strong>: ${charB.name} nhận +${k.toFixed(2)} toàn thuộc tính (HP +${hpGain.toFixed(1)}, ATK +${k.toFixed(2)}, DEF +${k.toFixed(2)}, LUCK +${k.toFixed(2)})!`);
+            charB.luck += luckGain;
+            if (hpGain > 0 || luckGain > 0) {
+                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charB.name} (Hệ Bao - Lv.${charB.level})</strong> gặp <strong>${charA.name} (Hệ Búa)</strong>: ${charB.name} nhận +${hpGain} HP, +${luckGain.toFixed(2)} LUCK!`);
+            }
         }
 
-        // Búa gặp kéo: búa tăng tối đa +8 DEF và 10% DEF (Lv.1: +0 DEF / 0%, Lv.40: +8 DEF / 10%)
+        // Búa gặp kéo: búa tăng phòng ngự theo level
         if (charA.element === 'ROCK' && charB.element === 'SCISSORS') {
             const oldDef = charA.def;
-            const d = 8.0 * ((charA.level - 1) / 39);
-            const intensity = 0.10 * ((charA.level - 1) / 39);
-            charA.def = Math.floor((charA.def + d) * (1 + intensity));
-            if (d > 0 || intensity > 0) {
-                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charA.name} (Hệ Búa - Lv.${charA.level})</strong> gặp <strong>${charB.name} (Hệ Kéo)</strong>: ${charA.name} được tăng thêm +${d.toFixed(1)} DEF và ${(intensity * 100).toFixed(1)}% DEF (${oldDef} &rarr; ${charA.def})!`);
+            const d = counterBonus(COUNTER_CONFIG.rock_vs_scissors, charA.level);
+            charA.def = Math.floor(charA.def + d);
+            if (d > 0) {
+                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charA.name} (Hệ Búa - Lv.${charA.level})</strong> gặp <strong>${charB.name} (Hệ Kéo)</strong>: ${charA.name} được tăng thêm +${d.toFixed(1)} DEF (${oldDef} → ${charA.def})!`);
             }
         }
         if (charB.element === 'ROCK' && charA.element === 'SCISSORS') {
             const oldDef = charB.def;
-            const d = 8.0 * ((charB.level - 1) / 39);
-            const intensity = 0.10 * ((charB.level - 1) / 39);
-            charB.def = Math.floor((charB.def + d) * (1 + intensity));
-            if (d > 0 || intensity > 0) {
-                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charB.name} (Hệ Búa - Lv.${charB.level})</strong> gặp <strong>${charA.name} (Hệ Kéo)</strong>: ${charB.name} được tăng thêm +${d.toFixed(1)} DEF và ${(intensity * 100).toFixed(1)}% DEF (${oldDef} &rarr; ${charB.def})!`);
+            const d = counterBonus(COUNTER_CONFIG.rock_vs_scissors, charB.level);
+            charB.def = Math.floor(charB.def + d);
+            if (d > 0) {
+                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charB.name} (Hệ Búa - Lv.${charB.level})</strong> gặp <strong>${charA.name} (Hệ Kéo)</strong>: ${charB.name} được tăng thêm +${d.toFixed(1)} DEF (${oldDef} → ${charB.def})!`);
             }
         }
     }
@@ -421,13 +518,12 @@ function runSimulation() {
             if (triggerA) {
                 if (charA.element === 'SCISSORS') {
                     isScissorsCritA = true;
-                    if (charA.hp >= charA.maxHp * 0.75) {
-                        critMultiplierA = 2.0;
-                        passiveLogA = ` <span class="highlight-crit">[💥 NỘI TẠI KÉO: CHÍ MẠNG 2X]</span>`;
-                    } else {
-                        critMultiplierA = 1.5;
-                        passiveLogA = ` <span class="highlight-crit">[💥 NỘI TẠI KÉO: CHÍ MẠNG 1.5X]</span>`;
-                    }
+                    // Nội suy mượt giữa 1.3x (HP=0%) và 1.6x (HP=100%), tránh dao động tại ngưỡng 75%
+                    const hpRatio = Math.max(0, Math.min(1, charA.hp / charA.maxHp));
+                    critMultiplierA = 1.3 + (1.4 - 1.3) * hpRatio;
+                    critMultiplierA = Math.round(critMultiplierA * 100) / 100;  // Làm tròn 2 chữ số
+                    const critDisplay = critMultiplierA.toFixed(2);
+                    passiveLogA = ` <span class="highlight-crit">[💥 NỘI TẠI KÉO: CHÍ MẠNG ${critDisplay}X]</span>`;
                 } else if (charA.element === 'ROCK') {
                     charA.shieldActive = true;
                     passiveLogA = ` <span style="color: var(--accent-blue); font-weight: bold;">[🛡️ NỘI TẠI BÚA: TẠO KHIÊN GIẢM THƯƠNG]</span>`;
@@ -504,13 +600,12 @@ function runSimulation() {
             if (triggerB) {
                 if (charB.element === 'SCISSORS') {
                     isScissorsCritB = true;
-                    if (charB.hp >= charB.maxHp * 0.75) {
-                        critMultiplierB = 2.0;
-                        passiveLogB = ` <span class="highlight-crit">[💥 NỘI TẠI KÉO: CHÍ MẠNG 2X]</span>`;
-                    } else {
-                        critMultiplierB = 1.5;
-                        passiveLogB = ` <span class="highlight-crit">[💥 NỘI TẠI KÉO: CHÍ MẠNG 1.5X]</span>`;
-                    }
+                    // Nội suy mượt giữa 1.3x (HP=0%) và 1.6x (HP=100%), tránh dao động tại ngưỡng 75%
+                    const hpRatio = Math.max(0, Math.min(1, charB.hp / charB.maxHp));
+                    critMultiplierB = 1.3 + (1.4 - 1.3) * hpRatio;
+                    critMultiplierB = Math.round(critMultiplierB * 100) / 100;  // Làm tròn 2 chữ số
+                    const critDisplay = critMultiplierB.toFixed(2);
+                    passiveLogB = ` <span class="highlight-crit">[💥 NỘI TẠI KÉO: CHÍ MẠNG ${critDisplay}X]</span>`;
                 } else if (charB.element === 'ROCK') {
                     charB.shieldActive = true;
                     passiveLogB = ` <span style="color: var(--accent-blue); font-weight: bold;">[🛡️ NỘI TẠI BÚA: TẠO KHIÊN GIẢM THƯƠNG]</span>`;

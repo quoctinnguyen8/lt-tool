@@ -52,7 +52,7 @@ function getDamageReduction(def) {
 
 function getPassiveChance(luck) {
     if (luck <= 0) return 0;
-    const chance = 1 - Math.pow(0.99, Math.pow(luck, 0.75));
+    const chance = 1 - Math.pow(0.993, Math.pow(luck, 0.75));
     return Math.max(0, chance);
 }
 
@@ -80,6 +80,78 @@ function getStatsAtLevel(element, level) {
     };
 }
 
+// Cơ chế khắc chế: BẢNG GIÁ TRỊ CỤ THỂ THEO LEVEL (piecewise) - đồng bộ với combat_simulator.js
+const COUNTER_CONFIG = {
+    // scissors_vs_paper: dmgMult bonus
+    // Mục tiêu: Kéo vs Bao 70-90%
+    scissors_vs_paper: {
+        1:  0.00,
+        5:  0.00,
+        10: 0.14,
+        15: 0.15,
+        20: 0.15,
+        25: 0.15,
+        30: 0.16,
+        35: 0.17,
+        40: 0.18
+    },
+    // rock_vs_scissors: DEF bonus (cộng dồn)
+    rock_vs_scissors: {
+        1:  0.0,
+        5:  0.0,
+        10: 0.0,
+        15: 0.0,
+        20: 0.0,
+        25: 0.0,
+        30: 0.0,
+        35: 0.0,
+        40: 0.0
+    },
+    paper_vs_rock: {
+        hp: {
+            1:  0,
+            5:  0,
+            10: 8,
+            15: 12,
+            20: 14,
+            25: 16,
+            30: 18,
+            35: 20,
+            40: 22
+        },
+        luck: {
+            1:  0.0,
+            5:  0.0,
+            10: 1.0,
+            15: 1.5,
+            20: 1.5,
+            25: 2.0,
+            30: 2.0,
+            35: 2.5,
+            40: 2.5
+        }
+    }
+};
+
+function counterBonus(configEntry, level) {
+    if (!configEntry) return 0;
+    const levelKeys = Object.keys(configEntry).map(Number).sort((a, b) => a - b);
+    if (level <= levelKeys[0]) return configEntry[levelKeys[0]];
+    if (level >= levelKeys[levelKeys.length - 1]) return configEntry[levelKeys[levelKeys.length - 1]];
+
+    for (let i = 0; i < levelKeys.length - 1; i++) {
+        const low = levelKeys[i];
+        const high = levelKeys[i + 1];
+        if (level >= low && level <= high) {
+            const lowVal = configEntry[low];
+            const highVal = configEntry[high];
+            const t = (level - low) / (high - low);
+            return lowVal + (highVal - lowVal) * t;
+        }
+    }
+    return configEntry[levelKeys[levelKeys.length - 1]];
+}
+
 // 4. MÔ PHỎNG MỘT TRẬN ĐẤU
 function simulateOneBattle(charA_base, charB_base, useCounter, maxTurns = 40) {
     const charA = { ...charA_base };
@@ -87,46 +159,38 @@ function simulateOneBattle(charA_base, charB_base, useCounter, maxTurns = 40) {
 
     // Áp dụng khắc chế đầu trận
     if (useCounter) {
-        // Scissors vs Paper (Kéo gặp bao: kéo tăng tối đa 8% sát thương)
+        // Scissors vs Paper (Kéo gặp bao): kéo tăng sát thương theo 3 giai đoạn
         if (charA.element === 'SCISSORS' && charB.element === 'PAPER') {
-            charA.damageMultiplier = 1 + 0.08 * ((charA.level - 1) / 39);
+            charA.damageMultiplier = 1 + counterBonus(COUNTER_CONFIG.scissors_vs_paper, charA.level);
         }
         if (charB.element === 'SCISSORS' && charA.element === 'PAPER') {
-            charB.damageMultiplier = 1 + 0.08 * ((charB.level - 1) / 39);
+            charB.damageMultiplier = 1 + counterBonus(COUNTER_CONFIG.scissors_vs_paper, charB.level);
         }
 
-        // Paper vs Rock (Bao gặp búa: bao tăng ngẫu nhiên [x-10] giá trị thuộc tính)
+        // Paper vs Rock (Bao gặp búa): bao tăng HP và LUCK (2 giá trị độc lập)
         if (charA.element === 'PAPER' && charB.element === 'ROCK') {
-            const lvl = charA.level;
-            const k = 0.2 + 2.8 * ((lvl - 1) / 39);
-            const hpGain = k * 10;
+            const hpGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.hp, charA.level);
+            const luckGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.luck, charA.level);
             charA.maxHp += hpGain;
             charA.hp += hpGain;
-            charA.atk += k;
-            charA.def += k;
-            charA.luck += k;
+            charA.luck += luckGain;
         }
         if (charB.element === 'PAPER' && charA.element === 'ROCK') {
-            const lvl = charB.level;
-            const k = 0.2 + 2.8 * ((lvl - 1) / 39);
-            const hpGain = k * 10;
+            const hpGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.hp, charB.level);
+            const luckGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.luck, charB.level);
             charB.maxHp += hpGain;
             charB.hp += hpGain;
-            charB.atk += k;
-            charB.def += k;
-            charB.luck += k;
+            charB.luck += luckGain;
         }
 
-        // Rock vs Scissors (Búa gặp kéo: búa tăng tối đa +8 DEF và 10% DEF)
+        // Rock vs Scissors (Búa gặp kéo): búa tăng phòng ngự theo 3 giai đoạn
         if (charA.element === 'ROCK' && charB.element === 'SCISSORS') {
-            const d = 8.0 * ((charA.level - 1) / 39);
-            const intensity = 0.10 * ((charA.level - 1) / 39);
-            charA.def = Math.floor((charA.def + d) * (1 + intensity));
+            const d = counterBonus(COUNTER_CONFIG.rock_vs_scissors, charA.level);
+            charA.def = Math.floor(charA.def + d);
         }
         if (charB.element === 'ROCK' && charA.element === 'SCISSORS') {
-            const d = 8.0 * ((charB.level - 1) / 39);
-            const intensity = 0.10 * ((charB.level - 1) / 39);
-            charB.def = Math.floor((charB.def + d) * (1 + intensity));
+            const d = counterBonus(COUNTER_CONFIG.rock_vs_scissors, charB.level);
+            charB.def = Math.floor(charB.def + d);
         }
     }
 
@@ -141,7 +205,10 @@ function simulateOneBattle(charA_base, charB_base, useCounter, maxTurns = 40) {
         if (triggerA) {
             if (charA.element === 'SCISSORS') {
                 isScissorsCritA = true;
-                critMultiplierA = (charA.hp >= charA.maxHp * 0.75) ? 2.0 : 1.5;
+                // Nội suy mượt 1.35 -> 1.45 (giảm max từ 1.6 để bớt snowball)
+                const hpRatioA = Math.max(0, Math.min(1, charA.hp / charA.maxHp));
+                critMultiplierA = 1.3 + (1.4 - 1.3) * hpRatioA;
+                critMultiplierA = Math.round(critMultiplierA * 100) / 100;
             } else if (charA.element === 'ROCK') {
                 charA.shieldActive = true;
             } else if (charA.element === 'PAPER') {
@@ -185,7 +252,10 @@ function simulateOneBattle(charA_base, charB_base, useCounter, maxTurns = 40) {
         if (triggerB) {
             if (charB.element === 'SCISSORS') {
                 isScissorsCritB = true;
-                critMultiplierB = (charB.hp >= charB.maxHp * 0.75) ? 2.0 : 1.5;
+                // Nội suy mượt 1.35 -> 1.45
+                const hpRatioB = Math.max(0, Math.min(1, charB.hp / charB.maxHp));
+                critMultiplierB = 1.3 + (1.4 - 1.3) * hpRatioB;
+                critMultiplierB = Math.round(critMultiplierB * 100) / 100;
             } else if (charB.element === 'ROCK') {
                 charB.shieldActive = true;
             } else if (charB.element === 'PAPER') {
@@ -229,7 +299,7 @@ function simulateOneBattle(charA_base, charB_base, useCounter, maxTurns = 40) {
 }
 
 // 5. CHẠY BATCH GIẢ LẬP
-function runSimulationBatch(elementA, elementB, level, useCounter, simulationsCount = 10000) {
+function runSimulationBatch(elementA, elementB, level, useCounter, simulationsCount = 30000) {
     const charA_base = getStatsAtLevel(elementA, level);
     const charB_base = getStatsAtLevel(elementB, level);
 
@@ -268,7 +338,7 @@ const matchups = [
     { a: 'PAPER', b: 'PAPER', name: 'Bao vs Bao' }
 ];
 
-console.log("⏳  Đang chạy giả lập đấu 10,000 trận cho từng cặp ở các level từ 1 đến 40...");
+console.log("⏳  Đang chạy giả lập đấu 30,000 trận cho từng cặp ở các level từ 1 đến 40...");
 
 const dataMatrix = {}; // dataMatrix[matchupName][level] = { avgTurns, winRateA, winRateB }
 
