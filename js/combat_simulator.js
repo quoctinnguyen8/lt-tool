@@ -1,100 +1,161 @@
 // Preset data with base and growth stats
-// Lưu ý cân bằng:
+// Lưu ý cân bằng (v75):
 //   - Số lượt mục tiêu (trung bình 3 đối thủ, có khắc chế):
 //     + Hệ Kéo: Lv.1 ≈ 8 lượt, Lv.40 ≈ 16 lượt
 //     + Hệ Búa: Lv.1 ≈ 9 lượt, Lv.40 ≈ 20 lượt
 //     + Hệ Bao:  Lv.1 ≈ 8.5 lượt, Lv.40 ≈ 18 lượt
-//   - Tỉ lệ thắng mục tiêu (Lv ≥ 10, có khắc chế, đánh trước):
-//     + Bên khắc chế: 70 - 80 %
-//     + Bên bị khắc chế: 30 - 40 %
+//   - Tỉ lệ thắng mục tiêu (Lv ≥ 10, có khắc chế): 80 - 99 %
+//   - Mỗi hệ có giai đoạn đỉnh cao riêng (kéo đầu, bao giữa, búa cuối game).
+//   - `growth` là scalar trung bình (dùng cho UI). `growthTable` là bảng piecewise (dùng cho tính toán).
 const PRESETS = {
     'SCISSORS': {
         name: 'Hệ Kéo',
         // Kéo: ATK cao (mạnh về chí mạng), HP & DEF thấp
-        base: { hp: 100, atk: 15, def: 7, luck: 5 },
-        growth: { hp: 18, atk: 1.5, def: 1.3, luck: 1.6 }
+        // PEAK ĐẦU GAME: growth giảm dần theo level
+        // v90: tăng ATK growth Lv.20-30 để xuyên DEF Búa
+        base: { hp: 100, atk: 16, def: 7, luck: 5 },
+        growth: { hp: 14, atk: 1.4, def: 1.2, luck: 1.3 },
+        growthTable: {
+            hp:   { 1: 16,  5: 16,  10: 16,  15: 15,  20: 14,  25: 13,  30: 12,  35: 11,  40: 10 },
+            atk:  { 1: 1.4, 5: 1.4, 10: 1.2, 15: 1.2, 20: 1.6, 25: 1.7, 30: 1.7, 35: 1.5, 40: 1.3 },
+            def:  { 1: 1.4, 5: 1.4, 10: 1.4, 15: 1.3, 20: 1.2, 25: 1.1, 30: 1.0, 35: 0.9, 40: 0.8 },
+            luck: { 1: 1.6, 5: 1.6, 10: 1.6, 15: 1.4, 20: 1.3, 25: 1.2, 30: 1.1, 35: 1.0, 40: 0.9 }
+        }
     },
-    'ROCK': { 
-        name: 'Hệ Búa', 
+    'ROCK': {
+        name: 'Hệ Búa',
         // Búa: HP/DEF cao (tank), ATK thấp
-        base: { hp: 110, atk: 14, def: 10, luck: 5 },
-        growth: { hp: 18, atk: 1.6, def: 1.2, luck: 1.2 }
+        // PEAK CUỐI GAME: growth tăng dần theo level
+        // v88: tăng DEF base để Búa tank hơn ở đầu game
+        base: { hp: 110, atk: 14, def: 13, luck: 5 },
+        growth: { hp: 19, atk: 1.6, def: 1.2, luck: 1.4 },
+        growthTable: {
+            hp:   { 1: 17,  5: 17,  10: 17,  15: 18,  20: 19,  25: 20,  30: 21,  35: 22,  40: 23 },
+            atk:  { 1: 1.4, 5: 1.4, 10: 1.4, 15: 1.5, 20: 1.6, 25: 1.7, 30: 1.8, 35: 1.9, 40: 2.0 },
+            def:  { 1: 1.0, 5: 1.0, 10: 1.0, 15: 1.1, 20: 1.2, 25: 1.3, 30: 1.4, 35: 1.5, 40: 1.6 },
+            luck: { 1: 1.2, 5: 1.2, 10: 1.2, 15: 1.3, 20: 1.4, 25: 1.5, 30: 1.6, 35: 1.7, 40: 1.8 }
+        }
     },
     'PAPER': {
         name: 'Hệ Bao',
         // Bao: cân bằng, thiên về hồi phục
+        // PEAK GIỮA GAME: growth tăng Lv.10-30, giảm Lv.30-40
         base: { hp: 100, atk: 15, def: 10, luck: 5 },
-        growth: { hp: 18, atk: 1.6, def: 1.4, luck: 1.5 }
+        growth: { hp: 17, atk: 1.6, def: 1.5, luck: 1.5 },
+        growthTable: {
+            hp:   { 1: 16,  5: 16,  10: 16,  15: 18,  20: 19,  25: 19,  30: 18,  35: 16,  40: 14 },
+            atk:  { 1: 1.5, 5: 1.5, 10: 1.5, 15: 1.6, 20: 1.7, 25: 1.7, 30: 1.6, 35: 1.5, 40: 1.4 },
+            def:  { 1: 1.4, 5: 1.4, 10: 1.4, 15: 1.5, 20: 1.6, 25: 1.6, 30: 1.5, 35: 1.4, 40: 1.3 },
+            luck: { 1: 1.4, 5: 1.4, 10: 1.4, 15: 1.5, 20: 1.7, 25: 1.7, 30: 1.6, 35: 1.5, 40: 1.4 }
+        }
     }
 };
 
-// =================== CƠ CHẾ KHẮC CHẾ ===================
-// Mục tiêu: chênh lệch tỉ lệ thắng giữa "khắc đánh trước" và "bị khắc đánh trước" ~ 35-40% (Lv ≥ 10).
-// Cơ chế mới: BẢNG GIÁ TRỊ CỤ THỂ THEO LEVEL (piecewise) - cho phép điều chỉnh từng giai đoạn game.
-//
-// Quy ước:
-//   - Bảng chứa giá trị CỘNG DỒN cho từng level cụ thể (1, 5, 10, 15, 20, 25, 30, 35, 40).
-//   - Giữa 2 level liên tiếp: nội suy tuyến tính.
-//   - Level < 1: 0, Level > 40: dùng giá trị Lv.40.
-//   - Có thể tinh chỉnh TỪNG giá trị để cân bằng riêng từng kèo.
+// Helper: lấy giá trị growth tại level cụ thể (nội suy tuyến tính)
+// growthEntry có thể là: số (scalar) hoặc object {1:x, 5:y, ...} (piecewise)
+function growthAt(growthEntry, level) {
+    if (typeof growthEntry === 'number') return growthEntry;
+    if (!growthEntry || typeof growthEntry !== 'object') return 0;
+    const keys = Object.keys(growthEntry).map(Number).sort((a, b) => a - b);
+    if (keys.length === 0) return 0;
+    if (level <= keys[0]) return growthEntry[keys[0]];
+    if (level >= keys[keys.length - 1]) return growthEntry[keys[keys.length - 1]];
+    for (let i = 0; i < keys.length - 1; i++) {
+        const low = keys[i];
+        const high = keys[i + 1];
+        if (level >= low && level <= high) {
+            const lowVal = growthEntry[low];
+            const highVal = growthEntry[high];
+            const t = (level - low) / (high - low);
+            return lowVal + (highVal - lowVal) * t;
+        }
+    }
+    return growthEntry[keys[keys.length - 1]];
+}
+
+// =================== CƠ CHẾ KHẮC CHẾ (v79) ===================
+// Yêu cầu mới: bên khắc chế LUÔN thắng 100% (cả 2 chiều).
+// Tập trung cân chỉnh HP còn lại khi thắng theo từng hệ và giai đoạn:
+//   - KÉO: 30% (đầu) / 20% (giữa) / 15% (cuối)
+//   - BAO: 20% (đầu) / 30% (giữa) / 20% (cuối)
+//   - BÚA: 15% (đầu) / 22% (giữa) / 35% (cuối)
 // --------------------------------------------------------
 // 1) KÉO gặp BAO -> kéo tăng sát thương (damageMultiplier)
 // 2) BÚA gặp KÉO -> búa tăng phòng ngự (cộng dồn)
-// 3) BAO gặp BÚA -> bao tăng toàn chỉ số (HP x10)
+// 3) BAO gặp BÚA -> bao tăng HP và LUCK
 const COUNTER_CONFIG = {
-    // scissors_vs_paper: dmgMult bonus (cộng vào 1.0)
-    // Mục tiêu: Kéo vs Bao 70-90%, giảm Lv.10-15 từ 0.12-0.14 xuống 0.10-0.12
+    // scissors_vs_paper: dmgMult bonus (CỰC MẠNH - Kéo luôn thắng)
     scissors_vs_paper: {
         1:  0.00,
         5:  0.00,
-        10: 0.14,  // Lv.10: +14%
-        15: 0.15,
-        20: 0.15,
-        25: 0.15,
-        30: 0.16,
-        35: 0.17,
-        40: 0.18
+        10: 1.30,
+        15: 1.25,
+        20: 1.20,
+        25: 0.95,
+        30: 0.70,
+        35: 0.55,
+        40: 0.40
     },
-    // rock_vs_scissors: DEF bonus (cộng dồn)
-    // BỎ HẲN (0) để Búa vs Kéo giảm từ 100% xuống 85-90%
+    // rock_vs_scissors: DEF bonus (Búa luôn thắng)
     rock_vs_scissors: {
         1:  0.0,
         5:  0.0,
-        10: 0.0,
-        15: 0.0,
-        20: 0.0,
-        25: 0.0,
-        30: 0.0,
-        35: 0.0,
-        40: 0.0
+        10: 5.0,
+        15: 4.5,
+        20: 4.0,
+        25: 4.5,
+        30: 5.0,
+        35: 5.5,
+        40: 6.0
     },
-    // paper_vs_rock: HP và LUCK tăng độc lập
-    // Tăng hp/luck Lv.20-40 để Bao vs Búa không vượt 90%
+    // paper_vs_rock: HP + LUCK bonus (CỰC MẠNH - Bao luôn thắng)
     paper_vs_rock: {
         hp: {
             1:  0,
             5:  0,
-            10: 8,
-            15: 12,
-            20: 14,   // Lv.20: +14
-            25: 16,
-            30: 18,
-            35: 20,
-            40: 22    // Lv.40: +22 (giảm từ 30)
+            10: 50,
+            15: 60,
+            20: 70,
+            25: 92,
+            30: 110,
+            35: 60,
+            40: 30
         },
         luck: {
             1:  0.0,
             5:  0.0,
-            10: 1.0,
-            15: 1.5,
-            20: 1.5,
-            25: 2.0,
-            30: 2.0,
-            35: 2.5,
-            40: 2.5
+            10: 3.0,
+            15: 4.0,
+            20: 5.0,
+            25: 6.5,
+            30: 8.0,
+            35: 7.0,
+            40: 6.0
         }
     }
 };
+
+// =================== HỒI PHỤC MỖI LƯỢT (v92) ===================
+// % maxHp hồi phục mỗi lượt cho bên khắc chế.
+// KÉO: 1.5% (Lv.10-20) → 1.0% (Lv.20-30) → 0.3% (Lv.30-40)
+// BAO: 0.5% (Lv.10-20) → 1.3% (Lv.20-30) → 0.3% (Lv.30-40)
+// BÚA: 0.05% (Lv.10-20) → 0.15% (Lv.20-30) → 0.25% (Lv.30-40)
+function getCounterRegenRate(element, level) {
+    if (element === 'SCISSORS') {
+        if (level <= 20) return 0.040;
+        if (level <= 30) return 0.020;
+        return 0.010;
+    } else if (element === 'PAPER') {
+        if (level <= 20) return 0.015;
+        if (level <= 30) return 0.030;
+        return 0.015;
+    } else if (element === 'ROCK') {
+        if (level <= 20) return 0.010;
+        if (level <= 30) return 0.020;
+        return 0.040;
+    }
+    return 0;
+}
 
 function counterBonus(configEntry, level) {
     if (!configEntry) return 0;
@@ -281,14 +342,23 @@ function updateStatsFromLevel(side) {
     let growthLuck = 0;
     
     if (side === 'a') {
-        // Pet: Đọc từ element preset
+        // Pet: Đọc từ element preset, dùng growthTable (piecewise) nếu có
         const element = document.getElementById('element-a').value;
         const preset = PRESETS[element];
         if (preset) {
-            growthHp = preset.growth.hp;
-            growthAtk = preset.growth.atk;
-            growthDef = preset.growth.def;
-            growthLuck = preset.growth.luck;
+            if (preset.growthTable) {
+                // v75: dùng bảng piecewise theo level
+                growthHp = growthAt(preset.growthTable.hp, level);
+                growthAtk = growthAt(preset.growthTable.atk, level);
+                growthDef = growthAt(preset.growthTable.def, level);
+                growthLuck = growthAt(preset.growthTable.luck, level);
+            } else {
+                // Fallback: scalar
+                growthHp = preset.growth.hp;
+                growthAtk = preset.growth.atk;
+                growthDef = preset.growth.def;
+                growthLuck = preset.growth.luck;
+            }
         }
     } else {
         // Monster: Đọc từ ô nhập ghi đè tăng trưởng

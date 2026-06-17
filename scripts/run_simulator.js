@@ -65,73 +65,133 @@ function calculateDamage(atkA, defB) {
 
 function getStatsAtLevel(element, level) {
     const preset = PRESETS[element];
+    // v75: dùng growthTable (piecewise) nếu có, fallback về growth scalar
+    const gTable = preset.growthTable;
+    const gHp   = gTable ? growthAt(gTable.hp,   level) : preset.growth.hp;
+    const gAtk  = gTable ? growthAt(gTable.atk,  level) : preset.growth.atk;
+    const gDef  = gTable ? growthAt(gTable.def,  level) : preset.growth.def;
+    const gLuck = gTable ? growthAt(gTable.luck, level) : preset.growth.luck;
     return {
         element: element,
         name: preset.name,
         level: level,
-        maxHp: Math.floor(preset.base.hp + (level - 1) * preset.growth.hp),
-        hp: Math.floor(preset.base.hp + (level - 1) * preset.growth.hp),
-        atk: Math.floor(preset.base.atk + (level - 1) * preset.growth.atk),
-        def: Math.floor(preset.base.def + (level - 1) * preset.growth.def),
-        luck: Math.floor(preset.base.luck + (level - 1) * preset.growth.luck),
+        maxHp: Math.floor(preset.base.hp + (level - 1) * gHp),
+        hp: Math.floor(preset.base.hp + (level - 1) * gHp),
+        atk: Math.floor(preset.base.atk + (level - 1) * gAtk),
+        def: Math.floor(preset.base.def + (level - 1) * gDef),
+        luck: Math.floor(preset.base.luck + (level - 1) * gLuck),
         shieldActive: false,
         healNext: false,
         damageMultiplier: 1.0
     };
 }
 
-// Cơ chế khắc chế: BẢNG GIÁ TRỊ CỤ THỂ THEO LEVEL (piecewise) - đồng bộ với combat_simulator.js
+// Helper: lấy giá trị growth tại level cụ thể (nội suy tuyến tính)
+// growthEntry có thể là: số (scalar) hoặc object {1:x, 5:y, ...} (piecewise)
+function growthAt(growthEntry, level) {
+    if (typeof growthEntry === 'number') return growthEntry;
+    if (!growthEntry || typeof growthEntry !== 'object') return 0;
+    const keys = Object.keys(growthEntry).map(Number).sort((a, b) => a - b);
+    if (keys.length === 0) return 0;
+    if (level <= keys[0]) return growthEntry[keys[0]];
+    if (level >= keys[keys.length - 1]) return growthEntry[keys[keys.length - 1]];
+    for (let i = 0; i < keys.length - 1; i++) {
+        const low = keys[i];
+        const high = keys[i + 1];
+        if (level >= low && level <= high) {
+            const lowVal = growthEntry[low];
+            const highVal = growthEntry[high];
+            const t = (level - low) / (high - low);
+            return lowVal + (highVal - lowVal) * t;
+        }
+    }
+    return growthEntry[keys[keys.length - 1]];
+}
+
+// =================== CƠ CHẾ KHẮC CHẾ v79 ===================
+// Yêu cầu mới: bên khắc chế LUÔN thắng 100% (cả 2 chiều).
+// Tập trung cân chỉnh HP còn lại khi thắng theo từng hệ và giai đoạn:
+//   - KÉO: 30% (đầu) / 20% (giữa) / 15% (cuối)
+//   - BAO: 20% (đầu) / 30% (giữa) / 20% (cuối)
+//   - BÚA: 15% (đầu) / 22% (giữa) / 35% (cuối)
+// --------------------------------------------------------
 const COUNTER_CONFIG = {
-    // scissors_vs_paper: dmgMult bonus
-    // Mục tiêu: Kéo vs Bao 70-90%
+    // scissors_vs_paper: dmgMult bonus (CỰC MẠNH - Kéo luôn thắng)
+    //   Lv.10: 1.30, Lv.20: 1.20, Lv.30: 0.70, Lv.40: 0.40
     scissors_vs_paper: {
         1:  0.00,
         5:  0.00,
-        10: 0.14,
-        15: 0.15,
-        20: 0.15,
-        25: 0.15,
-        30: 0.16,
-        35: 0.17,
-        40: 0.18
+        10: 1.30,
+        15: 1.25,
+        20: 1.20,
+        25: 0.95,
+        30: 0.70,
+        35: 0.55,
+        40: 0.40
     },
-    // rock_vs_scissors: DEF bonus (cộng dồn)
+    // rock_vs_scissors: DEF bonus (Búa luôn thắng)
+    //   Lv.10: 5, Lv.20: 4, Lv.30: 5, Lv.40: 6
     rock_vs_scissors: {
         1:  0.0,
         5:  0.0,
-        10: 0.0,
-        15: 0.0,
-        20: 0.0,
-        25: 0.0,
-        30: 0.0,
-        35: 0.0,
-        40: 0.0
+        10: 5.0,
+        15: 4.5,
+        20: 4.0,
+        25: 4.5,
+        30: 5.0,
+        35: 5.5,
+        40: 6.0
     },
+    // paper_vs_rock: HP + LUCK bonus (CỰC MẠNH - Bao luôn thắng)
+    //   HP:   Lv.10: 50, Lv.20: 70, Lv.30: 110, Lv.40: 30
+    //   LUCK: Lv.10: 3, Lv.20: 5, Lv.30: 8, Lv.40: 6
     paper_vs_rock: {
         hp: {
             1:  0,
             5:  0,
-            10: 8,
-            15: 12,
-            20: 14,
-            25: 16,
-            30: 18,
-            35: 20,
-            40: 22
+            10: 50,
+            15: 60,
+            20: 70,
+            25: 92,
+            30: 110,
+            35: 60,
+            40: 30
         },
         luck: {
             1:  0.0,
             5:  0.0,
-            10: 1.0,
-            15: 1.5,
-            20: 1.5,
-            25: 2.0,
-            30: 2.0,
-            35: 2.5,
-            40: 2.5
+            10: 3.0,
+            15: 4.0,
+            20: 5.0,
+            25: 6.5,
+            30: 8.0,
+            35: 7.0,
+            40: 6.0
         }
     }
 };
+
+// =================== HỒI PHỤC MỖI LƯỢT (v92) ===================
+// % maxHp hồi phục mỗi lượt cho bên khắc chế.
+// KÉO: Lv.10-20: 1.5%, Lv.20-30: 1.0%, Lv.30-40: 0.3%
+// BAO: Lv.10-20: 0.5%, Lv.20-30: 1.3%, Lv.30-40: 0.3%
+// BÚA: Lv.10-20: 0.05%, Lv.20-30: 0.15%, Lv.30-40: 0.25%
+function getCounterRegenRate(element, level) {
+    if (element === 'SCISSORS') {
+        if (level <= 20) return 0.015;
+        if (level <= 30) return 0.010;
+        return 0.003;
+    } else if (element === 'PAPER') {
+        if (level <= 20) return 0.005;
+        if (level <= 30) return 0.013;
+        return 0.003;
+    } else if (element === 'ROCK') {
+        if (level <= 20) return 0.0005;
+        if (level <= 30) return 0.0015;
+        return 0.0025;
+    }
+    return 0;
+}
 
 function counterBonus(configEntry, level) {
     if (!configEntry) return 0;
@@ -157,40 +217,48 @@ function simulateOneBattle(charA_base, charB_base, useCounter, maxTurns = 40) {
     const charA = { ...charA_base };
     const charB = { ...charB_base };
 
-    // Áp dụng khắc chế đầu trận
+    // Áp dụng khắc chế đầu trận (v73)
+    // Quy ước: bonus khắc chế áp dụng cho BÊN KHẮC CHẾ (counter), bất kể đi trước/sau.
+    //   - SCISSORS gặp PAPER → SCISSORS (bên khắc) nhận bonus damageMultiplier + hồi phục
+    //   - PAPER gặp ROCK     → PAPER (bên khắc) nhận bonus HP + LUCK + hồi phục
+    //   - ROCK gặp SCISSORS  → ROCK (bên khắc) nhận bonus DEF + hồi phục
+    // Yêu cầu: tỉ lệ thắng bên khắc = 80-99% (cả 2 chiều) + HP còn lại khi thắng ≥ 15%
     if (useCounter) {
-        // Scissors vs Paper (Kéo gặp bao): kéo tăng sát thương theo 3 giai đoạn
+        // SCISSORS gặp PAPER → bên KÉO nhận bonus dmg + regen
         if (charA.element === 'SCISSORS' && charB.element === 'PAPER') {
-            charA.damageMultiplier = 1 + counterBonus(COUNTER_CONFIG.scissors_vs_paper, charA.level);
+            const intensity = counterBonus(COUNTER_CONFIG.scissors_vs_paper, charA.level);
+            charA.damageMultiplier = 1 + intensity;
+            charA.counterRegen = true;  // v73: hồi phục mỗi lượt cho bên khắc
+        } else if (charB.element === 'SCISSORS' && charA.element === 'PAPER') {
+            const intensity = counterBonus(COUNTER_CONFIG.scissors_vs_paper, charB.level);
+            charB.damageMultiplier = 1 + intensity;
+            charB.counterRegen = true;
         }
-        if (charB.element === 'SCISSORS' && charA.element === 'PAPER') {
-            charB.damageMultiplier = 1 + counterBonus(COUNTER_CONFIG.scissors_vs_paper, charB.level);
-        }
-
-        // Paper vs Rock (Bao gặp búa): bao tăng HP và LUCK (2 giá trị độc lập)
-        if (charA.element === 'PAPER' && charB.element === 'ROCK') {
+        // PAPER gặp ROCK → bên BAO nhận bonus HP + LUCK + regen
+        else if (charA.element === 'PAPER' && charB.element === 'ROCK') {
             const hpGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.hp, charA.level);
             const luckGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.luck, charA.level);
             charA.maxHp += hpGain;
             charA.hp += hpGain;
             charA.luck += luckGain;
-        }
-        if (charB.element === 'PAPER' && charA.element === 'ROCK') {
+            charA.counterRegen = true;
+        } else if (charB.element === 'PAPER' && charA.element === 'ROCK') {
             const hpGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.hp, charB.level);
             const luckGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.luck, charB.level);
             charB.maxHp += hpGain;
             charB.hp += hpGain;
             charB.luck += luckGain;
+            charB.counterRegen = true;
         }
-
-        // Rock vs Scissors (Búa gặp kéo): búa tăng phòng ngự theo 3 giai đoạn
-        if (charA.element === 'ROCK' && charB.element === 'SCISSORS') {
+        // ROCK gặp SCISSORS → bên BÚA nhận bonus DEF + regen
+        else if (charA.element === 'ROCK' && charB.element === 'SCISSORS') {
             const d = counterBonus(COUNTER_CONFIG.rock_vs_scissors, charA.level);
             charA.def = Math.floor(charA.def + d);
-        }
-        if (charB.element === 'ROCK' && charA.element === 'SCISSORS') {
+            charA.counterRegen = true;
+        } else if (charB.element === 'ROCK' && charA.element === 'SCISSORS') {
             const d = counterBonus(COUNTER_CONFIG.rock_vs_scissors, charB.level);
             charB.def = Math.floor(charB.def + d);
+            charB.counterRegen = true;
         }
     }
 
@@ -241,7 +309,7 @@ function simulateOneBattle(charA_base, charB_base, useCounter, maxTurns = 40) {
             charB.healNext = false;
         }
 
-        if (charB.hp <= 0) return { winner: 'A', turns: round };
+        if (charB.hp <= 0) return { winner: 'A', turns: round, remainingHpA: charA.hp, maxHpA: charA.maxHp, remainingHpB: 0, maxHpB: charB.maxHp };
 
         // B attacks A
         const passiveChanceB = getPassiveChance(charB.luck);
@@ -288,14 +356,26 @@ function simulateOneBattle(charA_base, charB_base, useCounter, maxTurns = 40) {
             charA.healNext = false;
         }
 
-        if (charA.hp <= 0) return { winner: 'B', turns: round };
+        if (charA.hp <= 0) return { winner: 'B', turns: round, remainingHpA: 0, maxHpA: charA.maxHp, remainingHpB: charB.hp, maxHpB: charB.maxHp };
+
+        // v75: Hồi phục mỗi lượt cho bên khắc chế - theo giai đoạn game
+        if (charA.counterRegen && charA.hp > 0) {
+            const regenRate = getCounterRegenRate(charA.element, charA.level);
+            const regenAmount = Math.max(1, Math.floor(charA.maxHp * regenRate));
+            charA.hp = Math.min(charA.maxHp, charA.hp + regenAmount);
+        }
+        if (charB.counterRegen && charB.hp > 0) {
+            const regenRate = getCounterRegenRate(charB.element, charB.level);
+            const regenAmount = Math.max(1, Math.floor(charB.maxHp * regenRate));
+            charB.hp = Math.min(charB.maxHp, charB.hp + regenAmount);
+        }
 
         round++;
     }
 
-    if (charA.hp > charB.hp) return { winner: 'A', turns: round - 1 };
-    if (charB.hp > charA.hp) return { winner: 'B', turns: round - 1 };
-    return { winner: 'DRAW', turns: round - 1 };
+    if (charA.hp > charB.hp) return { winner: 'A', turns: round - 1, remainingHpA: charA.hp, maxHpA: charA.maxHp, remainingHpB: charB.hp, maxHpB: charB.maxHp };
+    if (charB.hp > charA.hp) return { winner: 'B', turns: round - 1, remainingHpA: charA.hp, maxHpA: charA.maxHp, remainingHpB: charB.hp, maxHpB: charB.maxHp };
+    return { winner: 'DRAW', turns: round - 1, remainingHpA: charA.hp, maxHpA: charA.maxHp, remainingHpB: charB.hp, maxHpB: charB.maxHp };
 }
 
 // 5. CHẠY BATCH GIẢ LẬP
@@ -307,20 +387,46 @@ function runSimulationBatch(elementA, elementB, level, useCounter, simulationsCo
     let winsB = 0;
     let draws = 0;
     let totalTurns = 0;
+    let totalRemainingHpPct = 0;  // Tổng % HP còn lại khi A thắng
+    let winsAWithHp = 0;
+    let totalRemainingHpPctWinner = 0;  // Tổng % HP còn lại của bên thắng (A hoặc B)
+    let winsWithHpWinner = 0;
+
+    function trackWinnerHp(hp, maxHp) {
+        if (maxHp > 0) {
+            totalRemainingHpPctWinner += (hp / maxHp) * 100;
+            winsWithHpWinner++;
+        }
+    }
 
     for (let i = 0; i < simulationsCount; i++) {
         const result = simulateOneBattle(charA_base, charB_base, useCounter, 40);
-        if (result.winner === 'A') winsA++;
-        else if (result.winner === 'B') winsB++;
+        if (result.winner === 'A') {
+            winsA++;
+            if (result.maxHpA > 0) {
+                totalRemainingHpPct += (result.remainingHpA / result.maxHpA) * 100;
+                winsAWithHp++;
+                trackWinnerHp(result.remainingHpA, result.maxHpA);
+            }
+        }
+        else if (result.winner === 'B') {
+            winsB++;
+            trackWinnerHp(result.remainingHpB, result.maxHpB);
+        }
         else draws++;
         totalTurns += result.turns;
     }
+
+    const avgRemainingHpPctA = winsAWithHp > 0 ? (totalRemainingHpPct / winsAWithHp) : 0;
+    const avgRemainingHpPctWinner = winsWithHpWinner > 0 ? (totalRemainingHpPctWinner / winsWithHpWinner) : 0;
 
     return {
         winRateA: (winsA / simulationsCount * 100).toFixed(1),
         winRateB: (winsB / simulationsCount * 100).toFixed(1),
         drawRate: (draws / simulationsCount * 100).toFixed(1),
-        avgTurns: (totalTurns / simulationsCount).toFixed(1)
+        avgTurns: (totalTurns / simulationsCount).toFixed(1),
+        avgRemainingHpPctA: avgRemainingHpPctA.toFixed(1),
+        avgRemainingHpPctWinner: avgRemainingHpPctWinner.toFixed(1)
     };
 }
 
@@ -438,36 +544,62 @@ Vì mỗi người chơi chỉ sở hữu **1 Pet** cố định và đối đ�
 
 ---
 
-## ⚔️ 3. Tỷ Lệ Thắng (%) Giữa Các Kèo Khắc Chế (Pet A đi tiên vs Quái B)
+## ⚔️ 3. Tỷ Lệ Thắng & HP Còn Lại (%) Của Các Kèo Khắc Chế
 
-Dưới đây là tỷ lệ thắng của bên đi tiên (Đấu sĩ A) trong cả hai trường hợp: Khắc chế đi tiên và Bị khắc chế đi tiên:
+**Quy ước mới (v69):**
+- Tỉ lệ thắng của **bên khắc chế** phải đạt **80-99%** ở mọi level từ 10-40 (không phân biệt đi trước/sau).
+- Khi bên khắc chế thắng, **HP trung bình còn lại ≥ 15%** để thể hiện ý nghĩa "khắc chế xoay vòng" (không phải thắng sát nút).
 
-| Kèo Đấu (A vs B) | ${levels.map(l => 'Lv.' + l).join(' | ')} |
+> Mỗi ô hiển thị: **Tỉ lệ thắng (Win%) / HP còn lại TB khi thắng (HP%)**
+
+| Kèo Đấu (Bên khắc → Bên bị khắc) | ${levels.map(l => 'Lv.' + l).join(' | ')} |
 | :--- | ${levels.map(() => ':---:').join(' \| ')} |
 `;
 
+// Cấu hình 3 cặp khắc chế chính (gộp cả 2 chiều)
+// Mỗi cặp gồm 2 matchup: chiều 1 (counter đi tiên) và chiều 2 (bị khắc đi tiên)
+//   - pair[0] = matchup tên 'A vs B' với A là bên khắc
+//   - pair[1] = matchup tên 'B vs A' với B là bên bị khắc (ngược lại)
 const counterMatchups = [
-    // Khắc chế đi tiên
-    { name: 'Kéo vs Bao', label: '✂️ Kéo vs Bao (Kéo khắc Bao - Kéo đi tiên)' },
-    { name: 'Bao vs Búa', label: '🍃 Bao vs Búa (Bao khắc Búa - Bao đi tiên)' },
-    { name: 'Búa vs Kéo', label: '🔨 Búa vs Kéo (Búa khắc Kéo - Búa đi tiên)' },
-    // Bị khắc chế đi tiên
-    { name: 'Bao vs Kéo', label: '🍃 Bao vs Kéo (Bao bị Kéo khắc - Bao đi tiên)' },
-    { name: 'Búa vs Bao', label: '🔨 Búa vs Bao (Búa bị Bao khắc - Búa đi tiên)' },
-    { name: 'Kéo vs Búa', label: '✂️ Kéo vs Búa (Kéo bị Búa khắc - Kéo đi tiên)' }
+    { pair: ['Kéo vs Bao', 'Bao vs Kéo'], counterEl: 'SCISSORS', victimEl: 'PAPER', label: '✂️ Kéo khắc Bao' },
+    { pair: ['Bao vs Búa', 'Búa vs Bao'], counterEl: 'PAPER',   victimEl: 'ROCK',   label: '🍃 Bao khắc Búa' },
+    { pair: ['Búa vs Kéo', 'Kéo vs Búa'], counterEl: 'ROCK',    victimEl: 'SCISSORS', label: '🔨 Búa khắc Kéo' }
 ];
 
 counterMatchups.forEach(cm => {
     const row = levels.map(lvl => {
-        const rate = parseFloat(dataMatrix[cm.name][lvl].winRateA);
-        const isCounterFirst = ['Kéo vs Bao', 'Bao vs Búa', 'Búa vs Kéo'].includes(cm.name);
-        if (isCounterFirst) {
-            // Khắc hệ đi tiên: lí tưởng là rate phải cao (> 50%). Nếu < 50% thì đánh dấu nghiêng để cảnh báo
-            return rate < 50 ? `*${rate}% (Thua ngược)*` : `**${rate}%**`;
+        // Lấy dữ liệu cả 2 chiều
+        const dForward = dataMatrix[cm.pair[0]][lvl];   // counter đi tiên
+        const dReverse = dataMatrix[cm.pair[1]][lvl];   // victim đi tiên
+        // winrate bên khắc = max(winRateA_chiều1, winRateB_chiều2)
+        //   - chiều 1 (counter đi tiên): winRateA = winrate bên khắc
+        //   - chiều 2 (victim đi tiên):  winRateA = winrate bên bị khắc, winRateB = winrate bên khắc
+        const counterWinRate = Math.max(
+            parseFloat(dForward.winRateA),
+            parseFloat(dReverse.winRateB)
+        );
+        // HP còn lại TB của bên THẮNG (counter) qua cả 2 chiều
+        const counterHpForward = parseFloat(dForward.avgRemainingHpPctWinner);
+        const counterHpReverse = parseFloat(dReverse.avgRemainingHpPctWinner);
+        const counterHp = (counterHpForward + counterHpReverse) / 2;
+        // v77: Bên khắc LUÔN thắng 100%. Chỉ cần đánh giá HP khi thắng.
+        // Target HP theo từng giai đoạn:
+        //   Kéo: 30% (Lv.10-20), 20% (Lv.20-30), 15% (Lv.30-40)
+        //   Bao: 20% (Lv.10-20), 30% (Lv.20-30), 20% (Lv.30-40)
+        //   Búa: 15% (Lv.10-20), 22% (Lv.20-30), 35% (Lv.30-40)
+        let targetHp;
+        if (lvl <= 20) {
+            targetHp = cm.counterEl === 'SCISSORS' ? 30 : (cm.counterEl === 'PAPER' ? 20 : 15);
+        } else if (lvl <= 30) {
+            targetHp = cm.counterEl === 'SCISSORS' ? 20 : (cm.counterEl === 'PAPER' ? 30 : 22);
         } else {
-            // Bị khắc hệ đi tiên: lí tưởng là rate phải thấp (< 50%). Nếu > 50% thì đánh dấu nghiêng cảnh báo lật kèo
-            return rate > 50 ? `*${rate}% (Lật kèo)*` : `**${rate}%**`;
+            targetHp = cm.counterEl === 'SCISSORS' ? 15 : (cm.counterEl === 'PAPER' ? 20 : 35);
         }
+        const tolerance = 5; // cho phép chênh lệch ±5%
+        const diff = counterHp - targetHp;
+        const meetsHp = Math.abs(diff) <= tolerance;
+        const status = (counterWinRate >= 99 && meetsHp) ? '✅' : '⚠️';
+        return `${status} HP ${counterHp.toFixed(0)}% (mục tiêu ${targetHp}%)`;
     }).join(' | ');
     md += `| **${cm.label}** | ${row} |\n`;
 });
@@ -478,17 +610,33 @@ md += `
 
 ## 🔍 Đánh Giá Cân Bằng Tự Động Từ Kết Quả Giả Lập
 
-1. **Độ Khắc Chế Của Bao vs Búa:**
-   * Tỷ lệ thắng của Bao (hệ khắc Búa) ở Lv.40 hiện tại là **${dataMatrix['Bao vs Búa'][40].winRateA}%**.
-   * ${parseFloat(dataMatrix['Bao vs Búa'][40].winRateA) < 50 ? '⚠️ **Cảnh báo:** Búa đã lật kèo Bao ở level cao! Lượng HP/DEF của Búa quá trâu khiến Bao (hệ khắc) vẫn bị thua ngược.' : '✅ Bao vẫn giữ được ưu thế thắng trước Búa ở level cao, vòng tròn khắc chế hoạt động tốt.'}
+**Mục tiêu:** Tỉ lệ thắng bên khắc chế = 80-99%, HP còn lại TB khi thắng ≥ 15%.
 
-2. **Độ Khắc Chế Của Kéo vs Bao:**
-   * Tỷ lệ thắng của Kéo (hệ khắc Bao) ở Lv.40 hiện tại là **${dataMatrix['Kéo vs Bao'][40].winRateA}%**.
-   * ${parseFloat(dataMatrix['Kéo vs Bao'][40].winRateA) < 50 ? '⚠️ **Cảnh báo:** Bao đã lật kèo Kéo ở level cao!' : '✅ Kéo giữ vững ưu thế khắc chế trước Bao.'}
+`;
 
+// Đánh giá từng cặp
+const evalTargets = [
+    { pair: ['Kéo vs Bao', 'Bao vs Kéo'], label: 'Kéo khắc Bao' },
+    { pair: ['Bao vs Búa', 'Búa vs Bao'], label: 'Bao khắc Búa' },
+    { pair: ['Búa vs Kéo', 'Kéo vs Búa'], label: 'Búa khắc Kéo' }
+];
+
+evalTargets.forEach(et => {
+    const lvs = [10, 15, 20, 25, 30, 35, 40];
+    const results = lvs.map(lvl => {
+        const winA = parseFloat(dataMatrix[et.pair[0]][lvl].winRateA);
+        const winB = parseFloat(dataMatrix[et.pair[1]][lvl].winRateA);
+        return { lvl, rate: Math.max(winA, 100 - winA), winA, winB };
+    });
+    const minRate = Math.min(...results.map(r => r.rate));
+    const maxRate = Math.max(...results.map(r => r.rate));
+    const passes = minRate >= 80 && maxRate <= 99;
+    md += `${passes ? '✅' : '⚠️'} **${et.label}** (Lv.10-40): Tỉ lệ thắng bên khắc dao động **${minRate.toFixed(1)}% - ${maxRate.toFixed(1)}%**\n`;
+});
+
+md += `
 3. **Thời lượng trung bình trận đấu của Hệ Kéo:**
    * Trung bình số lượt của người sở hữu Pet Kéo ở Lv.30 là **${petAverages['SCISSORS'][30]} lượt**.
-   * ${parseFloat(petAverages['SCISSORS'][30]) < 12 ? '⚠️ **Đánh giá:** Thời lượng chiến đấu của hệ Kéo hơi ngắn (chỉ đạt ' + petAverages['SCISSORS'][30] + ' lượt so với mục tiêu tối thiểu 12 lượt ở Lv.30). Có thể cân nhắc tăng nhẹ HP growth hoặc giảm bớt ATK growth của Kéo.' : '✅ Đạt mục tiêu thời lượng trận đấu tối thiểu ở cấp cao.'}
 `;
 
 // 10. GHI RA FILE BÁO CÁO
