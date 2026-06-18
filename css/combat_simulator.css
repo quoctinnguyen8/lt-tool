@@ -622,3 +622,157 @@ select.input-control {
 .stat-growth-val {
     color: var(--accent-neon);
 }
+
+/* ============================================================
+   COMBAT SIMULATOR v7 - bảng dữ liệu + control bar
+   ============================================================ */
+
+.control-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.sub-section-title {
+    font-family: var(--font-pixel);
+    font-size: 0.85rem;
+    color: var(--accent-blue);
+    text-transform: uppercase;
+    margin-top: 18px;
+    margin-bottom: 8px;
+    border-left: 4px solid var(--accent-blue);
+    padding-left: 8px;
+}
+
+.data-table-wrap {
+    overflow-x: auto;
+    background-color: var(--bg-panel-light);
+    border: 3px solid var(--border-pixel);
+    box-shadow: inset 2px 2px 0 rgba(0, 0, 0, 0.4);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-pixel);
+    font-size: 0.78rem;
+    color: var(--text-color);
+    min-width: 720px;
+}
+
+.data-table th,
+.data-table td {
+    border: 1px solid var(--border-pixel);
+    padding: 6px 8px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.data-table thead th {
+    background-color: var(--bg-dark);
+    color: var(--accent-gold);
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.data-table tbody td:first-child {
+    text-align: left;
+    color: var(--accent-gold);
+    font-weight: bold;
+    background-color: var(--bg-panel);
+    position: sticky;
+    left: 0;
+    z-index: 1;
+}
+
+.data-table tbody tr:hover td {
+    background-color: rgba(57, 255, 20, 0.05);
+}
+
+.data-table tbody tr:hover td:first-child {
+    background-color: var(--bg-panel-light);
+}
+
+.data-table .cell-good {
+    color: var(--accent-neon);
+    font-weight: bold;
+}
+
+.data-table .cell-bad {
+    color: var(--accent-red);
+    font-weight: bold;
+}
+
+.data-table .cell-warn {
+    color: var(--accent-gold);
+    font-weight: bold;
+}
+
+.goal-badge {
+    font-family: var(--font-pixel);
+    font-size: 0.7rem;
+    padding: 6px 10px;
+    border: 2px solid var(--border-pixel);
+    background-color: var(--bg-panel-light);
+    color: #8a92b2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.goal-badge.good {
+    border-color: var(--accent-neon);
+    color: var(--accent-neon);
+    background-color: rgba(57, 255, 20, 0.08);
+}
+
+.goal-badge.warn {
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+    background-color: rgba(255, 215, 0, 0.08);
+}
+
+.goal-badge.bad {
+    border-color: var(--accent-red);
+    color: var(--accent-red);
+    background-color: rgba(255, 51, 51, 0.08);
+}
+
+/* Log CRT console */
+.log-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.log-item {
+    padding: 6px 10px;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.05);
+    font-family: var(--font-pixel);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+.log-item .log-time {
+    color: #525c7a;
+    margin-right: 8px;
+}
+
+.log-item .log-info {
+    color: var(--text-color);
+}
+
+.log-item .log-warn {
+    color: var(--accent-gold);
+}
+
+.log-item .log-err {
+    color: var(--accent-red);
+}
+
+.log-item .log-ok {
+    color: var(--accent-neon);
+}

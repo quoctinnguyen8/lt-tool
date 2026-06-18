@@ -1,0 +1,9 @@
+Lv.1 paper_all_mult = 0.1 → Bao per-system avg turns = 9.67
+Lv.1 paper_all_mult = 0.2 → Bao per-system avg turns = 9.67
+Lv.1 paper_all_mult = 0.3 → Bao per-system avg turns = 9.00
+Lv.1 paper_all_mult = 0.4 → Bao per-system avg turns = 9.33
+Lv.1 paper_all_mult = 0.5 → Bao per-system avg turns = 9.33
+Lv.1 paper_all_mult = 0.6 → Bao per-system avg turns = 9.00
+Lv.1 paper_all_mult = 0.8 → Bao per-system avg turns = 9.33
+Lv.1 paper_all_mult = 0.92 → Bao per-system avg turns = 9.01
+Lv.1 paper_all_mult = 1 → Bao per-system avg turns = 9.02

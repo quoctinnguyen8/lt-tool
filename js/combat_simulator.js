@@ -1,812 +1,277 @@
-// Preset data with base and growth stats
-// Lưu ý cân bằng (v75):
-//   - Số lượt mục tiêu (trung bình 3 đối thủ, có khắc chế):
-//     + Hệ Kéo: Lv.1 ≈ 8 lượt, Lv.40 ≈ 16 lượt
-//     + Hệ Búa: Lv.1 ≈ 9 lượt, Lv.40 ≈ 20 lượt
-//     + Hệ Bao:  Lv.1 ≈ 8.5 lượt, Lv.40 ≈ 18 lượt
-//   - Tỉ lệ thắng mục tiêu (Lv ≥ 10, có khắc chế): 80 - 99 %
-//   - Mỗi hệ có giai đoạn đỉnh cao riêng (kéo đầu, bao giữa, búa cuối game).
-//   - `growth` là scalar trung bình (dùng cho UI). `growthTable` là bảng piecewise (dùng cho tính toán).
-const PRESETS = {
-    'SCISSORS': {
-        name: 'Hệ Kéo',
-        // Kéo: ATK cao (mạnh về chí mạng), HP & DEF thấp
-        // PEAK ĐẦU GAME: growth giảm dần theo level
-        // v90: tăng ATK growth Lv.20-30 để xuyên DEF Búa
-        base: { hp: 100, atk: 16, def: 7, luck: 5 },
-        growth: { hp: 14, atk: 1.4, def: 1.2, luck: 1.3 },
-        growthTable: {
-            hp:   { 1: 16,  5: 16,  10: 16,  15: 15,  20: 14,  25: 13,  30: 12,  35: 11,  40: 10 },
-            atk:  { 1: 1.4, 5: 1.4, 10: 1.2, 15: 1.2, 20: 1.6, 25: 1.7, 30: 1.7, 35: 1.5, 40: 1.3 },
-            def:  { 1: 1.4, 5: 1.4, 10: 1.4, 15: 1.3, 20: 1.2, 25: 1.1, 30: 1.0, 35: 0.9, 40: 0.8 },
-            luck: { 1: 1.6, 5: 1.6, 10: 1.6, 15: 1.4, 20: 1.3, 25: 1.2, 30: 1.1, 35: 1.0, 40: 0.9 }
-        }
-    },
-    'ROCK': {
-        name: 'Hệ Búa',
-        // Búa: HP/DEF cao (tank), ATK thấp
-        // PEAK CUỐI GAME: growth tăng dần theo level
-        // v88: tăng DEF base để Búa tank hơn ở đầu game
-        base: { hp: 110, atk: 14, def: 13, luck: 5 },
-        growth: { hp: 19, atk: 1.6, def: 1.2, luck: 1.4 },
-        growthTable: {
-            hp:   { 1: 17,  5: 17,  10: 17,  15: 18,  20: 19,  25: 20,  30: 21,  35: 22,  40: 23 },
-            atk:  { 1: 1.4, 5: 1.4, 10: 1.4, 15: 1.5, 20: 1.6, 25: 1.7, 30: 1.8, 35: 1.9, 40: 2.0 },
-            def:  { 1: 1.0, 5: 1.0, 10: 1.0, 15: 1.1, 20: 1.2, 25: 1.3, 30: 1.4, 35: 1.5, 40: 1.6 },
-            luck: { 1: 1.2, 5: 1.2, 10: 1.2, 15: 1.3, 20: 1.4, 25: 1.5, 30: 1.6, 35: 1.7, 40: 1.8 }
-        }
-    },
-    'PAPER': {
-        name: 'Hệ Bao',
-        // Bao: cân bằng, thiên về hồi phục
-        // PEAK GIỮA GAME: growth tăng Lv.10-30, giảm Lv.30-40
-        base: { hp: 100, atk: 15, def: 10, luck: 5 },
-        growth: { hp: 17, atk: 1.6, def: 1.5, luck: 1.5 },
-        growthTable: {
-            hp:   { 1: 16,  5: 16,  10: 16,  15: 18,  20: 19,  25: 19,  30: 18,  35: 16,  40: 14 },
-            atk:  { 1: 1.5, 5: 1.5, 10: 1.5, 15: 1.6, 20: 1.7, 25: 1.7, 30: 1.6, 35: 1.5, 40: 1.4 },
-            def:  { 1: 1.4, 5: 1.4, 10: 1.4, 15: 1.5, 20: 1.6, 25: 1.6, 30: 1.5, 35: 1.4, 40: 1.3 },
-            luck: { 1: 1.4, 5: 1.4, 10: 1.4, 15: 1.5, 20: 1.7, 25: 1.7, 30: 1.6, 35: 1.5, 40: 1.4 }
-        }
-    }
-};
+// js/combat_simulator.js
+// Combat Simulator v7 - orchestrator cho UI
+// Import core từ ./v7_balance.js (ES module), render bảng tĩnh, chạy mô phỏng
+// + auto-tune, hiển thị log CRT.
 
-// Helper: lấy giá trị growth tại level cụ thể (nội suy tuyến tính)
-// growthEntry có thể là: số (scalar) hoặc object {1:x, 5:y, ...} (piecewise)
-function growthAt(growthEntry, level) {
-    if (typeof growthEntry === 'number') return growthEntry;
-    if (!growthEntry || typeof growthEntry !== 'object') return 0;
-    const keys = Object.keys(growthEntry).map(Number).sort((a, b) => a - b);
-    if (keys.length === 0) return 0;
-    if (level <= keys[0]) return growthEntry[keys[0]];
-    if (level >= keys[keys.length - 1]) return growthEntry[keys[keys.length - 1]];
-    for (let i = 0; i < keys.length - 1; i++) {
-        const low = keys[i];
-        const high = keys[i + 1];
-        if (level >= low && level <= high) {
-            const lowVal = growthEntry[low];
-            const highVal = growthEntry[high];
-            const t = (level - low) / (high - low);
-            return lowVal + (highVal - lowVal) * t;
-        }
+import {
+    PRESET, COUNTER, MIRROR, PASSIVE_LUT,
+    LEVELS, ELEMENTS, TURN_TARGET,
+    COUNTER_MATCHUPS,
+    statsAtLevel, lutAt,
+    getDamageReduction, getPassiveChance,
+    buildReport, evaluateGoals, evaluateLevel,
+    tuneAll
+} from './v7_balance.js';
+
+const MATCHUP_LABELS = [
+    ['SCISSORS_vs_ROCK',     '✂️ Kéo vs 🔨 Búa (khắc chế)'],
+    ['ROCK_vs_PAPER',        '🔨 Búa vs 📄 Bao (khắc chế)'],
+    ['PAPER_vs_SCISSORS',    '📄 Bao vs ✂️ Kéo (khắc chế)'],
+    ['ROCK_vs_SCISSORS',     '🔨 Búa vs ✂️ Kéo (ngược)'],
+    ['PAPER_vs_ROCK',        '📄 Bao vs 🔨 Búa (ngược)'],
+    ['SCISSORS_vs_PAPER',    '✂️ Kéo vs 📄 Bao (ngược)'],
+    ['SCISSORS_vs_SCISSORS', '✂️ Kéo vs ✂️ Kéo (mirror)'],
+    ['ROCK_vs_ROCK',         '🔨 Búa vs 🔨 Búa (mirror)'],
+    ['PAPER_vs_PAPER',       '📄 Bao vs 📄 Bao (mirror)']
+];
+
+const PASSIVE_ROWS = [
+    { key: 'scissorsCritLow',  name: '✂️ Kéo crit (HP≤75%)',       fmt: v => `${(v*100).toFixed(1)}%` },
+    { key: 'scissorsCritHigh', name: '✂️ Kéo crit (HP>75%)',        fmt: v => `${(v*100).toFixed(1)}%` },
+    { key: 'rockGuardBase',    name: '🔨 Búa guard cơ bản',         fmt: v => `${(v*100).toFixed(1)}%` },
+    { key: 'rockGuardLowHp',   name: '🔨 Búa guard (HP<30%)',       fmt: v => `${(v*100).toFixed(1)}%` },
+    { key: 'paperHealBase',    name: '📄 Bao heal cơ bản',          fmt: v => `${(v*100).toFixed(1)}%` },
+    { key: 'paperHealLowHp',   name: '📄 Bao heal (HP<25%)',        fmt: v => `${(v*100).toFixed(1)}%` }
+];
+
+const COUNTER_ROWS = [
+    { key: 'scissors_vs_rock',           name: '✂️ Kéo vs 🔨 Búa: dmg%',    fmt: v => `${(v*100).toFixed(0)}%` },
+    { key: 'rock_vs_paper',              name: '🔨 Búa vs 📄 Bao: def+',     fmt: v => `${v.toFixed(0)}` },
+    { key: 'paper_vs_scissors',          name: '📄 Bao vs ✂️ Kéo: hp+',      fmt: v => `${v.toFixed(0)}` },
+    { key: 'paper_vs_scissors_luck',     name: '📄 Bao vs ✂️ Kéo: luck+',    fmt: v => `${v.toFixed(1)}` }
+];
+
+const MIRROR_ROWS = [
+    { key: 'scissors_dmg_mult', name: '✂️ Kéo dmg mult',  fmt: v => `${(v*100).toFixed(0)}%` },
+    { key: 'rock_def_mult',     name: '🔨 Búa def mult',  fmt: v => `${(v*100).toFixed(0)}%` },
+    { key: 'paper_all_mult',    name: '📄 Bao all mult',  fmt: v => `${(v*100).toFixed(0)}%` }
+];
+
+// =================== LOG ===================
+const logList = document.getElementById('battle-log');
+function logLine(msg, kind = 'info') {
+    if (!logList) return;
+    const li = document.createElement('li');
+    li.className = 'log-item';
+    const time = new Date().toLocaleTimeString('vi-VN');
+    li.innerHTML = `<span class="log-time">[${time}]</span><span class="log-${kind}">${msg}</span>`;
+    // Xoá placeholder dòng đầu
+    if (logList.firstElementChild && logList.firstElementChild.style && logList.firstElementChild.style.textAlign === 'center') {
+        logList.innerHTML = '';
     }
-    return growthEntry[keys[keys.length - 1]];
+    logList.appendChild(li);
+    const area = logList.parentElement;
+    if (area) area.scrollTop = area.scrollHeight;
 }
 
-// =================== CƠ CHẾ KHẮC CHẾ (v79) ===================
-// Yêu cầu mới: bên khắc chế LUÔN thắng 100% (cả 2 chiều).
-// Tập trung cân chỉnh HP còn lại khi thắng theo từng hệ và giai đoạn:
-//   - KÉO: 30% (đầu) / 20% (giữa) / 15% (cuối)
-//   - BAO: 20% (đầu) / 30% (giữa) / 20% (cuối)
-//   - BÚA: 15% (đầu) / 22% (giữa) / 35% (cuối)
-// --------------------------------------------------------
-// 1) KÉO gặp BAO -> kéo tăng sát thương (damageMultiplier)
-// 2) BÚA gặp KÉO -> búa tăng phòng ngự (cộng dồn)
-// 3) BAO gặp BÚA -> bao tăng HP và LUCK
-const COUNTER_CONFIG = {
-    // scissors_vs_paper: dmgMult bonus (CỰC MẠNH - Kéo luôn thắng)
-    scissors_vs_paper: {
-        1:  0.00,
-        5:  0.00,
-        10: 1.30,
-        15: 1.25,
-        20: 1.20,
-        25: 0.95,
-        30: 0.70,
-        35: 0.55,
-        40: 0.40
-    },
-    // rock_vs_scissors: DEF bonus (Búa luôn thắng)
-    rock_vs_scissors: {
-        1:  0.0,
-        5:  0.0,
-        10: 5.0,
-        15: 4.5,
-        20: 4.0,
-        25: 4.5,
-        30: 5.0,
-        35: 5.5,
-        40: 6.0
-    },
-    // paper_vs_rock: HP + LUCK bonus (CỰC MẠNH - Bao luôn thắng)
-    paper_vs_rock: {
-        hp: {
-            1:  0,
-            5:  0,
-            10: 50,
-            15: 60,
-            20: 70,
-            25: 92,
-            30: 110,
-            35: 60,
-            40: 30
-        },
-        luck: {
-            1:  0.0,
-            5:  0.0,
-            10: 3.0,
-            15: 4.0,
-            20: 5.0,
-            25: 6.5,
-            30: 8.0,
-            35: 7.0,
-            40: 6.0
-        }
-    }
-};
-
-// =================== HỒI PHỤC MỖI LƯỢT (v92) ===================
-// % maxHp hồi phục mỗi lượt cho bên khắc chế.
-// KÉO: 1.5% (Lv.10-20) → 1.0% (Lv.20-30) → 0.3% (Lv.30-40)
-// BAO: 0.5% (Lv.10-20) → 1.3% (Lv.20-30) → 0.3% (Lv.30-40)
-// BÚA: 0.05% (Lv.10-20) → 0.15% (Lv.20-30) → 0.25% (Lv.30-40)
-function getCounterRegenRate(element, level) {
-    if (element === 'SCISSORS') {
-        if (level <= 20) return 0.040;
-        if (level <= 30) return 0.020;
-        return 0.010;
-    } else if (element === 'PAPER') {
-        if (level <= 20) return 0.015;
-        if (level <= 30) return 0.030;
-        return 0.015;
-    } else if (element === 'ROCK') {
-        if (level <= 20) return 0.010;
-        if (level <= 30) return 0.020;
-        return 0.040;
-    }
-    return 0;
+function clearLog() {
+    if (!logList) return;
+    logList.innerHTML = '<li class="log-item" style="color:#8a92b2;text-align:center;padding:2rem 0;">[ Đã xoá log ]</li>';
 }
 
-function counterBonus(configEntry, level) {
-    if (!configEntry) return 0;
-    const levelKeys = Object.keys(configEntry).map(Number).sort((a, b) => a - b);
-    if (level <= levelKeys[0]) return configEntry[levelKeys[0]];
-    if (level >= levelKeys[levelKeys.length - 1]) return configEntry[levelKeys[levelKeys.length - 1]];
-
-    // Tìm 2 level bao quanh và nội suy tuyến tính
-    for (let i = 0; i < levelKeys.length - 1; i++) {
-        const low = levelKeys[i];
-        const high = levelKeys[i + 1];
-        if (level >= low && level <= high) {
-            const lowVal = configEntry[low];
-            const highVal = configEntry[high];
-            const t = (level - low) / (high - low);
-            return lowVal + (highVal - lowVal) * t;
-        }
-    }
-    return configEntry[levelKeys[levelKeys.length - 1]];
-}
-
-// Hệ số nhân chỉ số cho các cấp bậc quái vật (Thường, Tinh Anh, Trùm Cuối)
-// Người chơi có thể tự do chỉnh sửa các hệ số này để giả lập/thử nghiệm độ khó.
-const MONSTER_RANK_MULTIPLIERS = {
-    'NORMAL': { hp: 1.0, atk: 1.0, def: 1.0, luck: 1.0 },
-    'ELITE':  { hp: 1.3, atk: 1.1, def: 1.1, luck: 1.1 },
-    'BOSS':   { hp: 1.65, atk: 1.25, def: 1.25, luck: 1.25 }
-};
-
-function applyPreset(side, code) {
-    const preset = PRESETS[code];
-    if (!preset) return;
-    
-    // Set name
-    document.getElementById(`name-${side}`).value = side === 'a' ? `Pet ${preset.name}` : `Quái vật ${preset.name}`;
-    
-    // Set element dropdown
-    document.getElementById(`element-${side}`).value = code;
-    
-    // Set base stats inputs
-    document.getElementById(`hp-${side}`).value = preset.base.hp;
-    document.getElementById(`atk-${side}`).value = preset.base.atk;
-    document.getElementById(`def-${side}`).value = preset.base.def;
-    document.getElementById(`luck-${side}`).value = preset.base.luck;
-    
-    // Fill growth stats
-    if (side === 'a') {
-        document.getElementById('hp-growth-a').textContent = `+${preset.growth.hp}`;
-        document.getElementById('atk-growth-a').textContent = `+${preset.growth.atk}`;
-        document.getElementById('def-growth-a').textContent = `+${preset.growth.def}`;
-        document.getElementById('luck-growth-a').textContent = `+${preset.growth.luck}`;
-    } else {
-        document.getElementById('hp-growth-b').value = preset.growth.hp;
-        document.getElementById('atk-growth-b').value = preset.growth.atk;
-        document.getElementById('def-growth-b').value = preset.growth.def;
-        document.getElementById('luck-growth-b').value = preset.growth.luck;
-    }
-    
-    updateBadge(side);
-    highlightActivePreset(side, code);
-    updateStatsFromLevel(side);
-}
-
-function updateStatsFromPreset(side) {
-    const element = document.getElementById(`element-${side}`).value;
-    const preset = PRESETS[element];
-    
-    if (preset) {
-        document.getElementById(`hp-${side}`).value = preset.base.hp;
-        document.getElementById(`atk-${side}`).value = preset.base.atk;
-        document.getElementById(`def-${side}`).value = preset.base.def;
-        document.getElementById(`luck-${side}`).value = preset.base.luck;
-        
-        if (side === 'a') {
-            document.getElementById('hp-growth-a').textContent = `+${preset.growth.hp}`;
-            document.getElementById('atk-growth-a').textContent = `+${preset.growth.atk}`;
-            document.getElementById('def-growth-a').textContent = `+${preset.growth.def}`;
-            document.getElementById('luck-growth-a').textContent = `+${preset.growth.luck}`;
-        } else {
-            document.getElementById('hp-growth-b').value = preset.growth.hp;
-            document.getElementById('atk-growth-b').value = preset.growth.atk;
-            document.getElementById('def-growth-b').value = preset.growth.def;
-            document.getElementById('luck-growth-b').value = preset.growth.luck;
-        }
-    } else {
-        // VÔ HỆ (NONE)
-        document.getElementById(`hp-${side}`).value = 100;
-        document.getElementById(`atk-${side}`).value = 10;
-        document.getElementById(`def-${side}`).value = 5;
-        document.getElementById(`luck-${side}`).value = 5;
-        
-        if (side === 'a') {
-            document.getElementById('hp-growth-a').textContent = `+0`;
-            document.getElementById('atk-growth-a').textContent = `+0`;
-            document.getElementById('def-growth-a').textContent = `+0`;
-            document.getElementById('luck-growth-a').textContent = `+0`;
-        } else {
-            document.getElementById('hp-growth-b').value = 0;
-            document.getElementById('atk-growth-b').value = 0;
-            document.getElementById('def-growth-b').value = 0;
-            document.getElementById('luck-growth-b').value = 0;
-        }
-    }
-    
-    updateBadge(side);
-    highlightActivePreset(side, element);
-    updateStatsFromLevel(side);
-}
-
-function highlightActivePreset(side, code) {
-    const container = document.getElementById(`presets-${side}`);
-    if (!container) return;
-    
-    const buttons = container.querySelectorAll('.preset-btn');
-    buttons.forEach(btn => {
-        if (btn.getAttribute('data-preset') === code) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-}
-
-function updateBadge(side) {
-    const select = document.getElementById(`element-${side}`);
-    const badge = document.getElementById(`badge-${side}`);
-    const element = select.value;
-    
-    badge.className = 'badge-element';
-    if (element === 'SCISSORS') {
-        badge.classList.add('badge-scissors');
-        badge.textContent = 'Hệ Kéo';
-    } else if (element === 'ROCK') {
-        badge.classList.add('badge-rock');
-        badge.textContent = 'Hệ Búa';
-    } else if (element === 'PAPER') {
-        badge.classList.add('badge-paper');
-        badge.textContent = 'Hệ Bao';
-    } else {
-        badge.className = 'badge-element badge-none';
-        badge.textContent = 'Vô hệ';
+// =================== RENDER BẢNG TĨNH ===================
+function renderTablePresets() {
+    const tbody = document.querySelector('#table-presets tbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    for (const el of ELEMENTS) {
+        const p = PRESET[el];
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td style="color: var(--color-${el.toLowerCase()});">${p.name}</td>
+            <td>${p.base.hp}</td>
+            <td>${p.base.atk}</td>
+            <td>${p.base.def}</td>
+            <td>${p.base.luck}</td>
+            <td>[${p.growth.hp.join(', ')}]</td>
+            <td>[${p.growth.atk.join(', ')}]</td>
+            <td>[${p.growth.def.join(', ')}]</td>
+            <td>[${p.growth.luck.join(', ')}]</td>
+        `;
+        tbody.appendChild(tr);
     }
 }
 
-/**
- * Tính tỉ lệ giảm sát thương (%) từ chỉ số DEF.
- * Công thức: % giảm = 1 - 0.98^(def^0.8)
- */
-function getDamageReduction(def) {
-    if (def <= 0) return 0;
-    const reduction = 1 - Math.pow(0.98, Math.pow(def, 0.8));
-    return Math.max(0, reduction);
+function renderLevelGrid(tableId, rows, sourceObj) {
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    for (const row of rows) {
+        const tr = document.createElement('tr');
+        const fmt = row.fmt || (v => String(v));
+        const cells = [`<td>${row.name}</td>`];
+        for (const lv of LEVELS) {
+            const v = lutAt(sourceObj[row.key], lv);
+            cells.push(`<td>${fmt(v)}</td>`);
+        }
+        tr.innerHTML = cells.join('');
+        tbody.appendChild(tr);
+    }
 }
 
-/**
- * Tính tỉ lệ phần trăm kích hoạt nội tại (%) dựa vào chỉ số LUCK.
- * Công thức MỚI: % kích hoạt = 1 - 0.993^(luck^0.75)
- * - Giảm crit chance ~30% so với cũ (0.99) để giảm snowball crit
- * - Lv.10 luck=18: 6.1% (cũ 8.6%)
- * - Lv.40 luck=63: 14.6% (cũ 20.2%)
- */
-function getPassiveChance(luck) {
-    if (luck <= 0) return 0;
-    const chance = 1 - Math.pow(0.993, Math.pow(luck, 0.75));
-    return Math.max(0, chance);
+function renderTableCounter() { renderLevelGrid('table-counter', COUNTER_ROWS, COUNTER); }
+function renderTableMirror()  { renderLevelGrid('table-mirror',  MIRROR_ROWS,  MIRROR); }
+function renderTablePassive() { renderLevelGrid('table-passive', PASSIVE_ROWS, PASSIVE_LUT); }
+
+// =================== RENDER BÁO CÁO ===================
+function renderReport(report, goals) {
+    const { allPS, allResults, allCounter } = report;
+
+    // Bảng 1: số lượt
+    const tbTurns = document.querySelector('#table-turns tbody');
+    tbTurns.innerHTML = '';
+    for (const el of ELEMENTS) {
+        const tr = document.createElement('tr');
+        const cells = [`<td style="color: var(--color-${el.toLowerCase()});">${PRESET[el].name}</td>`];
+        for (const lv of LEVELS) {
+            const cur = allPS[lv][el];
+            const tgt = TURN_TARGET[el][lv];
+            const pct = (cur - tgt) / tgt * 100;
+            const tol = lv < 10 ? 12 : 8;
+            const ok = Math.abs(pct) <= tol;
+            cells.push(`<td class="${ok ? 'cell-good' : 'cell-bad'}">${cur.toFixed(1)} / ${tgt.toFixed(1)}</td>`);
+        }
+        tr.innerHTML = cells.join('');
+        tbTurns.appendChild(tr);
+    }
+
+    // Bảng 2: tỉ lệ thắng
+    const tbWin = document.querySelector('#table-winrate tbody');
+    tbWin.innerHTML = '';
+    for (const [key, name] of MATCHUP_LABELS) {
+        const tr = document.createElement('tr');
+        const cells = [`<td>${name}</td>`];
+        for (const lv of LEVELS) {
+            const r = allResults[lv][key];
+            const aOk = r.winRateA >= 95;
+            const bOk = r.winRateB >= 95;
+            const cls = (aOk && bOk) ? 'cell-good' : (aOk || bOk) ? 'cell-warn' : 'cell-bad';
+            cells.push(`<td class="${cls}">${r.winRateA.toFixed(1)} / ${r.winRateB.toFixed(1)}</td>`);
+        }
+        tr.innerHTML = cells.join('');
+        tbWin.appendChild(tr);
+    }
+
+    // Bảng 3: HP% còn lại
+    const tbHp = document.querySelector('#table-hp tbody');
+    tbHp.innerHTML = '';
+    for (const cm of COUNTER_MATCHUPS) {
+        for (const dir of ['first', 'second']) {
+            const dirLabel = dir === 'first' ? `${cm.counter} đi trước` : `${cm.counter} đi sau`;
+            const tr = document.createElement('tr');
+            const cells = [`<td>${cm.name} (${dirLabel})</td>`];
+            for (const lv of LEVELS) {
+                const data = allCounter[lv][cm.name][dir];
+                // Trong 'first' A là counter, 'second' B là counter
+                const hp = (dir === 'first' ? data.avgHpAWin : data.avgHpBWin) * 100;
+                let cls = 'cell-warn';
+                if (lv < 10) cls = '';
+                else if (hp >= 10 && hp <= 35) cls = 'cell-good';
+                else cls = 'cell-bad';
+                cells.push(`<td class="${cls}">${hp.toFixed(0)}%</td>`);
+            }
+            tr.innerHTML = cells.join('');
+            tbHp.appendChild(tr);
+        }
+    }
+
+    // Goal summary badge
+    const badge = document.getElementById('goal-summary');
+    if (badge) {
+        const totalScore = goals.turnOk + goals.winOk + goals.hpOk;
+        const totalCount = goals.turnTotal + goals.winTotal + goals.hpTotal;
+        const pct = (totalScore / totalCount * 100).toFixed(0);
+        badge.textContent = `Turn ${goals.turnOk}/${goals.turnTotal} · Win ${goals.winOk}/${goals.winTotal} · HP ${goals.hpOk}/${goals.hpTotal} (${pct}%)`;
+        badge.className = 'goal-badge ' + (pct >= 80 ? 'good' : pct >= 50 ? 'warn' : 'bad');
+    }
 }
 
-/**
- * Cập nhật chỉ số tự động dựa trên Cấp độ (Level) và Tăng trưởng hệ nguyên tố.
- */
-function updateStatsFromLevel(side) {
-    const level = parseInt(document.getElementById(`level-${side}`).value) || 1;
-    
-    // Đọc chỉ số cơ bản từ input
-    const baseHp = parseInt(document.getElementById(`hp-${side}`).value) || 0;
-    const baseAtk = parseInt(document.getElementById(`atk-${side}`).value) || 0;
-    const baseDef = parseInt(document.getElementById(`def-${side}`).value) || 0;
-    const baseLuck = parseInt(document.getElementById(`luck-${side}`).value) || 0;
-    
-    // Đọc tỉ lệ tăng trưởng
-    let growthHp = 0;
-    let growthAtk = 0;
-    let growthDef = 0;
-    let growthLuck = 0;
-    
-    if (side === 'a') {
-        // Pet: Đọc từ element preset, dùng growthTable (piecewise) nếu có
-        const element = document.getElementById('element-a').value;
-        const preset = PRESETS[element];
-        if (preset) {
-            if (preset.growthTable) {
-                // v75: dùng bảng piecewise theo level
-                growthHp = growthAt(preset.growthTable.hp, level);
-                growthAtk = growthAt(preset.growthTable.atk, level);
-                growthDef = growthAt(preset.growthTable.def, level);
-                growthLuck = growthAt(preset.growthTable.luck, level);
-            } else {
-                // Fallback: scalar
-                growthHp = preset.growth.hp;
-                growthAtk = preset.growth.atk;
-                growthDef = preset.growth.def;
-                growthLuck = preset.growth.luck;
-            }
-        }
-    } else {
-        // Monster: Đọc từ ô nhập ghi đè tăng trưởng
-        growthHp = parseInt(document.getElementById('hp-growth-b').value) || 0;
-        growthAtk = parseInt(document.getElementById('atk-growth-b').value) || 0;
-        growthDef = parseInt(document.getElementById('def-growth-b').value) || 0;
-        growthLuck = parseInt(document.getElementById('luck-growth-b').value) || 0;
+// =================== CHẠY MÔ PHỎNG ===================
+function setRunning(running) {
+    const btn = document.getElementById('btn-run-sim');
+    const reset = document.getElementById('btn-reset-data');
+    if (btn) {
+        btn.disabled = running;
+        btn.textContent = running ? '[ ĐANG CHẠY... ]' : '[ CHẠY MÔ PHỎNG ]';
     }
-    
-    // Tính toán chỉ số thực tế
-    let actualHp = baseHp + (level - 1) * growthHp;
-    let actualAtk = baseAtk + (level - 1) * growthAtk;
-    let actualDef = baseDef + (level - 1) * growthDef;
-    let actualLuck = baseLuck + (level - 1) * growthLuck;
-
-    if (side === 'b') {
-        const typeSelect = document.getElementById('monster-type');
-        const rank = typeSelect ? typeSelect.value : 'NORMAL';
-        const mults = MONSTER_RANK_MULTIPLIERS[rank] || { hp: 1.0, atk: 1.0, def: 1.0, luck: 1.0 };
-        
-        actualHp = actualHp * mults.hp;
-        actualAtk = actualAtk * mults.atk;
-        actualDef = actualDef * mults.def;
-        actualLuck = actualLuck * mults.luck;
-    }
-
-    // Chỉ số sau cùng sẽ là số nguyên
-    actualHp = Math.floor(actualHp);
-    actualAtk = Math.floor(actualAtk);
-    actualDef = Math.floor(actualDef);
-    actualLuck = Math.floor(actualLuck);
-    
-    // Tính phần trăm giảm sát thương
-    const reductionPercent = (getDamageReduction(actualDef) * 100).toFixed(1);
-    
-    // Tính phần trăm kích hoạt nội tại
-    const passivePercent = (getPassiveChance(actualLuck) * 100).toFixed(1);
-    
-    // Hiển thị ra UI
-    document.getElementById(`display-level-${side}`).textContent = level;
-    document.getElementById(`actual-hp-${side}`).textContent = actualHp;
-    document.getElementById(`actual-atk-${side}`).textContent = actualAtk;
-    document.getElementById(`actual-def-${side}`).textContent = actualDef;
-    document.getElementById(`actual-reduction-${side}`).textContent = reductionPercent;
-    document.getElementById(`actual-luck-${side}`).textContent = actualLuck;
-    document.getElementById(`actual-passive-${side}`).textContent = passivePercent;
-
+    if (reset) reset.disabled = running;
 }
 
-/**
- * Tính toán sát thương thực tế mà Defender phải nhận.
- * Công thức: Sát thương = Max(1, ATK_A * (1 - Giảm_B))
- * 
- * @param {number} atkA Sức tấn công của Đấu sĩ A
- * @param {number} defB Giáp của Đấu sĩ B
- * @returns {number} Sát thương thực tế (trừ thẳng vào HP của B)
- */
-function calculateDamage(atkA, defB) {
-    const minDamage = 1;
-    const reduction = getDamageReduction(defB);
-    const damage = atkA * (1 - reduction);
-    
-    return Math.max(minDamage, Math.floor(damage));
+async function runSimulation() {
+    setRunning(true);
+    const N = Math.max(50, parseInt(document.getElementById('sim-n').value) || 200);
+    const tuneN = Math.max(50, parseInt(document.getElementById('sim-tune-n').value) || 200);
+    const doTune = document.getElementById('tuneToggle').checked;
+
+    logLine(`▶ Bắt đầu chạy. N=${N}, TUNE=${doTune ? `bật (tuneN=${tuneN})` : 'tắt'}`, 'info');
+
+    // Re-render bảng tĩnh (đề phòng COUNTER/MIRROR đã bị tune sửa)
+    renderTableCounter();
+    renderTableMirror();
+    renderTablePassive();
+
+    try {
+        if (doTune) {
+            logLine(`⏳ Đang auto-tune COUNTER + MIRROR theo từng level ... (có thể mất vài phút)`, 'warn');
+            await new Promise(resolve => {
+                tuneAll(tuneN, {
+                    onStart: (n) => logLine(`  • TUNE start, tuneN=${n}`, 'info'),
+                    onLevel: (lv, sec) => logLine(`  • TUNE Lv.${lv} xong (${sec.toFixed(1)}s)`, 'ok'),
+                    onDone: () => { logLine(`✓ Auto-tune hoàn tất.`, 'ok'); resolve(); }
+                });
+            });
+            // Cập nhật lại bảng tĩnh sau tune
+            renderTableCounter();
+            renderTableMirror();
+        }
+
+        logLine(`⏳ Đang chạy report với N=${N} ...`, 'warn');
+        const t0 = performance.now();
+        const report = buildReport(N);
+        const goals = evaluateGoals(report);
+        const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+        renderReport(report, goals);
+        logLine(`✓ Report xong trong ${elapsed}s.`, 'ok');
+        logLine(`  Turn goal: ${goals.turnOk}/${goals.turnTotal} (tol ±8% Lv.10+, ±12% Lv.<10)`, goals.turnOk === goals.turnTotal ? 'ok' : 'warn');
+        logLine(`  Win rate ≥95% (counter, Lv.10+): ${goals.winOk}/${goals.winTotal}`, goals.winOk === goals.winTotal ? 'ok' : 'warn');
+        logLine(`  HP remaining 10-35% (counter, Lv.10+): ${goals.hpOk}/${goals.hpTotal}`, goals.hpOk === goals.hpTotal ? 'ok' : 'warn');
+    } catch (err) {
+        logLine(`✗ Lỗi: ${err && err.message ? err.message : err}`, 'err');
+        console.error(err);
+    } finally {
+        setRunning(false);
+    }
 }
 
-function runSimulation() {
-    // 1. Thu thập dữ liệu chiến đấu thực tế
-    const charA = {
-        name: document.getElementById('name-a').value || 'Pet',
-        level: parseInt(document.getElementById('level-a').value) || 1,
-        maxHp: parseInt(document.getElementById('actual-hp-a').textContent) || 100,
-        hp: parseInt(document.getElementById('actual-hp-a').textContent) || 100,
-        element: document.getElementById('element-a').value,
-        atk: parseInt(document.getElementById('actual-atk-a').textContent) || 10,
-        def: parseInt(document.getElementById('actual-def-a').textContent) || 5,
-        luck: parseInt(document.getElementById('actual-luck-a').textContent) || 5,
-        shieldActive: false,
-        healNext: false,
-        damageMultiplier: 1.0
-    };
-
-    const charB = {
-        name: document.getElementById('name-b').value || 'Quái vật',
-        level: parseInt(document.getElementById('level-b').value) || 1,
-        maxHp: parseInt(document.getElementById('actual-hp-b').textContent) || 100,
-        hp: parseInt(document.getElementById('actual-hp-b').textContent) || 100,
-        element: document.getElementById('element-b').value,
-        atk: parseInt(document.getElementById('actual-atk-b').textContent) || 10,
-        def: parseInt(document.getElementById('actual-def-b').textContent) || 5,
-        luck: parseInt(document.getElementById('actual-luck-b').textContent) || 5,
-        shieldActive: false,
-        healNext: false,
-        damageMultiplier: 1.0
-    };
-
-    const totalTurns = parseInt(document.getElementById('turns-count').value) || 10;
-
-    // 2. Chuẩn bị nhật ký đấu
-    const logList = document.getElementById('battle-log');
-    logList.innerHTML = '';
-
-    // Áp dụng cơ chế khắc chế nếu được bật
-    const useCounter = document.getElementById('counterToggle') ? document.getElementById('counterToggle').checked : false;
-    let counterLogs = [];
-
-    if (useCounter) {
-        // Kéo gặp bao: kéo tăng sát thương theo level (chia 3 giai đoạn)
-        if (charA.element === 'SCISSORS' && charB.element === 'PAPER') {
-            const intensity = counterBonus(COUNTER_CONFIG.scissors_vs_paper, charA.level);
-            charA.damageMultiplier = 1 + intensity;
-            if (intensity > 0) {
-                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charA.name} (Hệ Kéo - Lv.${charA.level})</strong> gặp <strong>${charB.name} (Hệ Bao)</strong>: ${charA.name} được tăng ${(intensity * 100).toFixed(1)}% sát thương gây ra!`);
-            }
-        }
-        if (charB.element === 'SCISSORS' && charA.element === 'PAPER') {
-            const intensity = counterBonus(COUNTER_CONFIG.scissors_vs_paper, charB.level);
-            charB.damageMultiplier = 1 + intensity;
-            if (intensity > 0) {
-                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charB.name} (Hệ Kéo - Lv.${charB.level})</strong> gặp <strong>${charA.name} (Hệ Bao)</strong>: ${charB.name} được tăng ${(intensity * 100).toFixed(1)}% sát thương gây ra!`);
-            }
-        }
-
-        // Bao gặp búa: bao tăng HP và LUCK (2 giá trị độc lập, không có tỉ lệ cố định)
-        if (charA.element === 'PAPER' && charB.element === 'ROCK') {
-            const hpGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.hp, charA.level);
-            const luckGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.luck, charA.level);
-            charA.maxHp += hpGain;
-            charA.hp += hpGain;
-            charA.luck += luckGain;
-            if (hpGain > 0 || luckGain > 0) {
-                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charA.name} (Hệ Bao - Lv.${charA.level})</strong> gặp <strong>${charB.name} (Hệ Búa)</strong>: ${charA.name} nhận +${hpGain} HP, +${luckGain.toFixed(2)} LUCK!`);
-            }
-        }
-        if (charB.element === 'PAPER' && charA.element === 'ROCK') {
-            const hpGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.hp, charB.level);
-            const luckGain = counterBonus(COUNTER_CONFIG.paper_vs_rock.luck, charB.level);
-            charB.maxHp += hpGain;
-            charB.hp += hpGain;
-            charB.luck += luckGain;
-            if (hpGain > 0 || luckGain > 0) {
-                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charB.name} (Hệ Bao - Lv.${charB.level})</strong> gặp <strong>${charA.name} (Hệ Búa)</strong>: ${charB.name} nhận +${hpGain} HP, +${luckGain.toFixed(2)} LUCK!`);
-            }
-        }
-
-        // Búa gặp kéo: búa tăng phòng ngự theo level
-        if (charA.element === 'ROCK' && charB.element === 'SCISSORS') {
-            const oldDef = charA.def;
-            const d = counterBonus(COUNTER_CONFIG.rock_vs_scissors, charA.level);
-            charA.def = Math.floor(charA.def + d);
-            if (d > 0) {
-                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charA.name} (Hệ Búa - Lv.${charA.level})</strong> gặp <strong>${charB.name} (Hệ Kéo)</strong>: ${charA.name} được tăng thêm +${d.toFixed(1)} DEF (${oldDef} → ${charA.def})!`);
-            }
-        }
-        if (charB.element === 'ROCK' && charA.element === 'SCISSORS') {
-            const oldDef = charB.def;
-            const d = counterBonus(COUNTER_CONFIG.rock_vs_scissors, charB.level);
-            charB.def = Math.floor(charB.def + d);
-            if (d > 0) {
-                counterLogs.push(`🔥 <strong>[KHẮC CHẾ]</strong> <strong>${charB.name} (Hệ Búa - Lv.${charB.level})</strong> gặp <strong>${charA.name} (Hệ Kéo)</strong>: ${charB.name} được tăng thêm +${d.toFixed(1)} DEF (${oldDef} → ${charB.def})!`);
-            }
-        }
-    }
-
-    if (counterLogs.length > 0) {
-        const initialLogItem = document.createElement('li');
-        initialLogItem.className = 'log-item';
-        initialLogItem.style.borderLeft = '4px solid var(--accent-gold)';
-        initialLogItem.style.backgroundColor = 'rgba(255, 215, 0, 0.05)';
-        initialLogItem.innerHTML = `<div class="log-turn-header" style="color: var(--accent-gold);">🔥 HIỆU ỨNG KHẮC CHẾ ĐẦU TRẬN ĐẤU</div>` + 
-            counterLogs.map(log => `<div class="log-action" style="font-size: 0.85rem; margin-top: 4px;">${log}</div>`).join('');
-        logList.appendChild(initialLogItem);
-    }
-
-    // 3. Tiến trình chiến đấu
-    const monsterType = document.getElementById('monster-type') ? document.getElementById('monster-type').value : 'NORMAL';
-    const maxRuns = (monsterType === 'ELITE' || monsterType === 'BOSS') ? 2 : 1;
-    
-    let winner = null;
-    
-    for (let run = 1; run <= maxRuns; run++) {
-        // Nếu quái đã chết ở hiệp trước thì dừng
-        if (charB.hp <= 0) break;
-        
-        // Hiệp mới
-        if (run > 1) {
-            // Hiệp 2: Hồi đầy máu cho Pet
-            charA.hp = charA.maxHp;
-            // Reset các hiệu ứng tạm thời
-            charA.shieldActive = false;
-            charA.healNext = false;
-            charB.shieldActive = false;
-            charB.healNext = false;
-        }
-        
-        // Log bắt đầu Hiệp đấu
-        const startLogItem = document.createElement('li');
-        startLogItem.className = 'log-item';
-        startLogItem.style.borderLeft = '4px solid var(--accent-blue)';
-        startLogItem.style.backgroundColor = 'rgba(0, 191, 255, 0.05)';
-        
-        const rankName = monsterType === 'ELITE' ? 'Tinh Anh' : (monsterType === 'BOSS' ? 'Trùm Cuối' : 'Quái thường');
-        startLogItem.innerHTML = `<div class="log-turn-header" style="color: var(--accent-blue);">🎬 HIỆP GIẢ LẬP ${run} (${rankName})</div>
-            <div class="log-action" style="font-size: 0.85rem; margin-top: 4px;">
-                ⚔️ <strong>${charA.name}</strong> (HP: ${charA.hp}/${charA.maxHp}) bước vào trận chiến với 
-                <strong>${charB.name}</strong> (HP: ${charB.hp}/${charB.maxHp}).
-            </div>`;
-        logList.appendChild(startLogItem);
-        
-        let round = 1;
-        let endedEarly = false;
-        
-        while (round <= totalTurns && charA.hp > 0 && charB.hp > 0) {
-            const logItem = document.createElement('li');
-            logItem.className = 'log-item';
-            
-            let roundText = `<div class="log-turn-header">Hiệp ${run} - Lượt ${round}</div>`;
-
-            // ==========================================
-            // --- Đòn 1: Pet (A) tấn công Quái vật (B) ---
-            // ==========================================
-            const passiveChanceA = getPassiveChance(charA.luck);
-            const triggerA = Math.random() < passiveChanceA;
-            let isScissorsCritA = false;
-            let critMultiplierA = 1.5;
-            let passiveLogA = '';
-
-            if (triggerA) {
-                if (charA.element === 'SCISSORS') {
-                    isScissorsCritA = true;
-                    // Nội suy mượt giữa 1.3x (HP=0%) và 1.6x (HP=100%), tránh dao động tại ngưỡng 75%
-                    const hpRatio = Math.max(0, Math.min(1, charA.hp / charA.maxHp));
-                    critMultiplierA = 1.3 + (1.4 - 1.3) * hpRatio;
-                    critMultiplierA = Math.round(critMultiplierA * 100) / 100;  // Làm tròn 2 chữ số
-                    const critDisplay = critMultiplierA.toFixed(2);
-                    passiveLogA = ` <span class="highlight-crit">[💥 NỘI TẠI KÉO: CHÍ MẠNG ${critDisplay}X]</span>`;
-                } else if (charA.element === 'ROCK') {
-                    charA.shieldActive = true;
-                    passiveLogA = ` <span style="color: var(--accent-blue); font-weight: bold;">[🛡️ NỘI TẠI BÚA: TẠO KHIÊN GIẢM THƯƠNG]</span>`;
-                } else if (charA.element === 'PAPER') {
-                    charA.healNext = true;
-                    passiveLogA = ` <span style="color: var(--accent-neon); font-weight: bold;">[🍃 NỘI TẠI BAO: SẴN SÀNG HỒI PHỤC]</span>`;
-                }
-            }
-
-            let dmgToB = calculateDamage(charA.atk, charB.def);
-            if (charA.damageMultiplier && charA.damageMultiplier > 1.0) {
-                dmgToB = Math.floor(dmgToB * charA.damageMultiplier);
-            }
-            if (isScissorsCritA) {
-                dmgToB = Math.floor(dmgToB * critMultiplierA);
-            }
-
-            let shieldLogB = '';
-            if (charB.shieldActive) {
-                const isLowHpB = charB.hp < 0.25 * charB.maxHp;
-                const reductionRate = isLowHpB ? 0.95 : 0.75;
-                dmgToB = Math.max(1, Math.floor(dmgToB * (1 - reductionRate)));
-                shieldLogB = `<br><span style="color: var(--accent-blue); font-size: 0.75rem;">🛡️ [NỘI TẠI BÚA] kích hoạt chắn đòn! Giảm ${reductionRate * 100}% sát thương nhận vào.</span>`;
-                charB.shieldActive = false;
-            }
-
-            charB.hp = Math.max(0, charB.hp - dmgToB);
-            const reductionPercentB = (getDamageReduction(charB.def) * 100).toFixed(1);
-
-            let dmgDetailA = `ATK: <span style="font-weight:600;">${charA.atk}</span> vs DEF đối phương: <span style="font-weight:600;">${charB.def} (Giảm ${reductionPercentB}%)</span>`;
-            if (charA.damageMultiplier && charA.damageMultiplier > 1.0) {
-                dmgDetailA += ` <span style="color: var(--accent-gold); font-size: 0.75rem; font-weight: bold;">[x${charA.damageMultiplier} Khắc chế]</span>`;
-            }
-            dmgDetailA += shieldLogB;
-
-            roundText += `<div class="log-action">
-                ⚔️ <strong>${charA.name} (Lv.${charA.level})</strong> tấn công <strong>${charB.name} (Lv.${charB.level})</strong>.${passiveLogA}
-            </div>
-            <div class="log-detail">
-                ${dmgDetailA}
-                <br>&rarr; Gây <span class="highlight-dmg">${dmgToB} sát thương</span>. HP của ${charB.name} còn: <strong>${charB.hp}/${charB.maxHp}</strong>.
-            </div>`;
-
-            if (charB.healNext && charB.hp > 0) {
-                const isLowHpB = charB.hp < 0.3 * charB.maxHp;
-                const healRate = isLowHpB ? 0.75 : 0.5;
-                const healAmount = Math.floor(dmgToB * healRate);
-                charB.hp = Math.min(charB.maxHp, charB.hp + healAmount);
-                
-                roundText += `<div class="log-detail" style="color: var(--accent-neon); font-size: 0.75rem; margin-top: 2px;">
-                    🍃 [NỘI TẠI BAO] kích hoạt hồi phục! Hồi lại +${healAmount} HP (Bằng ${healRate * 100}% sát thương nhận). HP hiện tại: <strong>${charB.hp}/${charB.maxHp}</strong>.
-                </div>`;
-                charB.healNext = false;
-            }
-
-            if (charB.hp <= 0) {
-                roundText += `<div style="color: var(--accent-neon); font-weight: bold; margin-top: 0.5rem;">💀 ${charB.name} đã ngã xuống!</div>`;
-                logItem.innerHTML = roundText;
-                logList.appendChild(logItem);
-                winner = charA;
-                endedEarly = true;
-                break;
-            }
-
-            // ==========================================
-            // --- Đòn 2: Quái vật (B) phản công Pet (A) ---
-            // ==========================================
-            const passiveChanceB = getPassiveChance(charB.luck);
-            const triggerB = Math.random() < passiveChanceB;
-            let isScissorsCritB = false;
-            let critMultiplierB = 1.5;
-            let passiveLogB = '';
-
-            if (triggerB) {
-                if (charB.element === 'SCISSORS') {
-                    isScissorsCritB = true;
-                    // Nội suy mượt giữa 1.3x (HP=0%) và 1.6x (HP=100%), tránh dao động tại ngưỡng 75%
-                    const hpRatio = Math.max(0, Math.min(1, charB.hp / charB.maxHp));
-                    critMultiplierB = 1.3 + (1.4 - 1.3) * hpRatio;
-                    critMultiplierB = Math.round(critMultiplierB * 100) / 100;  // Làm tròn 2 chữ số
-                    const critDisplay = critMultiplierB.toFixed(2);
-                    passiveLogB = ` <span class="highlight-crit">[💥 NỘI TẠI KÉO: CHÍ MẠNG ${critDisplay}X]</span>`;
-                } else if (charB.element === 'ROCK') {
-                    charB.shieldActive = true;
-                    passiveLogB = ` <span style="color: var(--accent-blue); font-weight: bold;">[🛡️ NỘI TẠI BÚA: TẠO KHIÊN GIẢM THƯƠNG]</span>`;
-                } else if (charB.element === 'PAPER') {
-                    charB.healNext = true;
-                    passiveLogB = ` <span style="color: var(--accent-neon); font-weight: bold;">[🍃 NỘI TẠI BAO: SẴN SÀNG HỒI PHỤC]</span>`;
-                }
-            }
-
-            let dmgToA = calculateDamage(charB.atk, charA.def);
-            if (charB.damageMultiplier && charB.damageMultiplier > 1.0) {
-                dmgToA = Math.floor(dmgToA * charB.damageMultiplier);
-            }
-            if (isScissorsCritB) {
-                dmgToA = Math.floor(dmgToA * critMultiplierB);
-            }
-
-            let shieldLogA = '';
-            if (charA.shieldActive) {
-                const isLowHpA = charA.hp < 0.25 * charA.maxHp;
-                const reductionRate = isLowHpA ? 0.95 : 0.75;
-                dmgToA = Math.max(1, Math.floor(dmgToA * (1 - reductionRate)));
-                shieldLogA = `<br><span style="color: var(--accent-blue); font-size: 0.75rem;">🛡️ [NỘI TẠI BÚA] kích hoạt chắn đòn! Giảm ${reductionRate * 100}% sát thương nhận vào.</span>`;
-                charA.shieldActive = false;
-            }
-
-            charA.hp = Math.max(0, charA.hp - dmgToA);
-            const reductionPercentA = (getDamageReduction(charA.def) * 100).toFixed(1);
-
-            let dmgDetailB = `ATK: <span style="font-weight:600;">${charB.atk}</span> vs DEF đối phương: <span style="font-weight:600;">${charA.def} (Giảm ${reductionPercentA}%)</span>`;
-            if (charB.damageMultiplier && charB.damageMultiplier > 1.0) {
-                dmgDetailB += ` <span style="color: var(--accent-gold); font-size: 0.75rem; font-weight: bold;">[x${charB.damageMultiplier} Khắc chế]</span>`;
-            }
-            dmgDetailB += shieldLogA;
-
-            roundText += `<div class="log-action" style="margin-top: 0.5rem; border-top: 1px dashed rgba(255,255,255,0.05); padding-top: 0.5rem;">
-                ⚔️ <strong>${charB.name} (Lv.${charB.level})</strong> phản công <strong>${charA.name} (Lv.${charA.level})</strong>.${passiveLogB}
-            </div>
-            <div class="log-detail">
-                ${dmgDetailB}
-                <br>&rarr; Gây <span class="highlight-dmg">${dmgToA} sát thương</span>. HP của ${charA.name} còn: <strong>${charA.hp}/${charA.maxHp}</strong>.
-            </div>`;
-
-            if (charA.healNext && charA.hp > 0) {
-                const isLowHpA = charA.hp < 0.3 * charA.maxHp;
-                const healRate = isLowHpA ? 0.75 : 0.5;
-                const healAmount = Math.floor(dmgToA * healRate);
-                charA.hp = Math.min(charA.maxHp, charA.hp + healAmount);
-                
-                roundText += `<div class="log-detail" style="color: var(--accent-neon); font-size: 0.75rem; margin-top: 2px;">
-                    🍃 [NỘI TẠI BAO] kích hoạt hồi phục! Hồi lại +${healAmount} HP (Bằng ${healRate * 100}% sát thương nhận). HP hiện tại: <strong>${charA.hp}/${charA.maxHp}</strong>.
-                </div>`;
-                charA.healNext = false;
-            }
-
-            if (charA.hp <= 0) {
-                roundText += `<div style="color: var(--accent-neon); font-weight: bold; margin-top: 0.5rem;">💀 ${charA.name} đã ngã xuống!</div>`;
-                logItem.innerHTML = roundText;
-                logList.appendChild(logItem);
-                winner = charB;
-                endedEarly = true;
-                break;
-            }
-
-            logItem.innerHTML = roundText;
-            logList.appendChild(logItem);
-            round++;
-        }
-        
-        // Log báo cáo cuối Hiệp đấu hiện tại
-        const runOutcomeItem = document.createElement('li');
-        runOutcomeItem.className = 'log-item';
-        runOutcomeItem.style.borderLeft = '4px solid var(--accent-gold)';
-        runOutcomeItem.style.backgroundColor = 'rgba(255, 215, 0, 0.03)';
-        
-        let outcomeMsg = '';
-        if (charB.hp <= 0) {
-            outcomeMsg = `🎉 <strong>Hiệp ${run} Kết Thúc:</strong> <strong>${charA.name}</strong> đã hạ gục <strong>${charB.name}</strong>!`;
-        } else if (charA.hp <= 0) {
-            outcomeMsg = `💀 <strong>Hiệp ${run} Kết Thúc:</strong> <strong>${charB.name}</strong> đã hạ gục <strong>${charA.name}</strong>!`;
-        } else {
-            outcomeMsg = `🤝 <strong>Hiệp ${run} Kết Thúc:</strong> Hết thời gian (${totalTurns} lượt). HP Quái còn lại: <strong>${charB.hp}/${charB.maxHp}</strong>.`;
-        }
-        runOutcomeItem.innerHTML = `<div class="log-detail" style="font-weight: bold; color: var(--accent-gold); padding: 4px 0;">${outcomeMsg}</div>`;
-        logList.appendChild(runOutcomeItem);
-    }
-
-    // 4. Cập nhật kết quả cuối trận
-    const outcomeBox = document.getElementById('outcome-box');
-    if (charB.hp <= 0) {
-        outcomeBox.className = 'outcome-box outcome-win';
-        outcomeBox.textContent = `🏆 PET CHIẾN THẮNG CHUNG CUỘC (Đã diệt quái vật)`;
-    } else {
-        outcomeBox.className = 'outcome-box outcome-draw';
-        outcomeBox.textContent = `🤝 QUÁI VẬT SỐNG SÓT (Pet thất bại)`;
-    }
-
-    // Cập nhật nhãn và thanh máu
-    document.getElementById('label-name-a').textContent = charA.name;
-    document.getElementById('label-hp-a').textContent = `${charA.hp} / ${charA.maxHp} HP`;
-    const pctA = Math.max(0, (charA.hp / charA.maxHp) * 100);
-    const barA = document.getElementById('bar-hp-a');
-    barA.style.width = `${pctA}%`;
-    if (pctA <= 25) barA.className = 'health-bar-inner low';
-    else barA.className = 'health-bar-inner';
-
-    document.getElementById('label-name-b').textContent = charB.name;
-    document.getElementById('label-hp-b').textContent = `${charB.hp} / ${charB.maxHp} HP`;
-    const pctB = Math.max(0, (charB.hp / charB.maxHp) * 100);
-    const barB = document.getElementById('bar-hp-b');
-    barB.style.width = `${pctB}%`;
-    if (pctB <= 25) barB.className = 'health-bar-inner low';
-    else barB.className = 'health-bar-inner';
-
+function resetData() {
+    // Reload lại module để reset COUNTER/MIRROR/PASSIVE_LUT/PRESET
+    // Cách đơn giản: thử lại bằng cách gọi lại module - vì COUNTER/MIRROR là mutable object trong cùng module instance.
+    // Do các object được share, ta sẽ reset về default bằng cách reload trang.
+    logLine('↻ Reload trang để reset dữ liệu về mặc định v7 ...', 'warn');
+    setTimeout(() => location.reload(), 300);
 }
 
-// Initial initialization and event listener setups when DOM is loaded
+// =================== INIT ===================
 document.addEventListener('DOMContentLoaded', () => {
-    // Initialize elements and stats
-    applyPreset('a', 'SCISSORS');
-    applyPreset('b', 'ROCK');
-    
-    // CRT scanlines Toggle
+    renderTablePresets();
+    renderTableCounter();
+    renderTableMirror();
+    renderTablePassive();
+
+    const btnRun = document.getElementById('btn-run-sim');
+    if (btnRun) btnRun.addEventListener('click', runSimulation);
+    const btnReset = document.getElementById('btn-reset-data');
+    if (btnReset) btnReset.addEventListener('click', resetData);
+    const btnClear = document.getElementById('btn-clear-log');
+    if (btnClear) btnClear.addEventListener('click', clearLog);
+
     const crtToggle = document.getElementById('crtToggle');
     if (crtToggle) {
         crtToggle.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                document.body.classList.add('crt');
-            } else {
-                document.body.classList.remove('crt');
-            }
+            document.body.classList.toggle('crt', e.target.checked);
         });
     }
+
+    logLine('✓ UI sẵn sàng. PRESET/COUNTER/MIRROR/PASSIVE đã load.', 'ok');
+    logLine('  Nhấn "[ CHẠY MÔ PHỎNG ]" để chạy báo cáo. Bật AUTO-TUNE để tune bảng trước khi chạy.', 'info');
 });
