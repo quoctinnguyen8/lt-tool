@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Combat Simulator v8.3 — Report</title>
+<style>
+:root {
+    --bg: #0f1218; --panel: #1a1f2b; --border: #2a3142;
+    --text: #e6e8ee; --muted: #8a93a6; --accent: #ffcf3f;
+    --scissors: #ff5e7a; --rock: #6aa7ff; --paper: #58e58a;
+    --warn: #ff6b35; --ok: #4ade80; --bad: #ef4444;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--text);
+              font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+              margin: 0; padding: 0; line-height: 1.5; }
+header { background: linear-gradient(135deg, #1a1f2b 0%, #0f1218 100%);
+         border-bottom: 2px solid var(--accent);
+         padding: 24px 32px; }
+header h1 { margin: 0; font-size: 26px; }
+header h1 .v { color: var(--accent); }
+header p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+main { max-width: 1500px; margin: 0 auto; padding: 24px 32px 60px; }
+.section { background: var(--panel); border: 1px solid var(--border);
+            border-radius: 8px; padding: 20px 24px; margin-bottom: 20px; }
+.section h2 { margin: 0 0 12px; font-size: 16px; color: var(--accent);
+              text-transform: uppercase; letter-spacing: 1px; }
+.section .desc { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+.summary-card { background: #0f1218; border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; }
+.summary-card .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.summary-card .value { font-size: 28px; font-weight: 700; margin-top: 4px; }
+.summary-card .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.value.ok { color: var(--ok); }
+.value.warn { color: var(--warn); }
+.value.bad { color: var(--bad); }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border); }
+th:first-child, td:first-child { text-align: center; }
+th { background: #0f1218; color: var(--muted); font-weight: 600;
+     text-transform: uppercase; font-size: 10px; letter-spacing: 1px; }
+th.s, td.s { color: var(--scissors); }
+th.r, td.r { color: var(--rock); }
+th.p, td.p { color: var(--paper); }
+th.c, td.c { color: var(--warn); }
+th.m, td.m { color: #c084fc; }
+.cell-ok { color: var(--ok); }
+.cell-warn { color: var(--warn); }
+.cell-bad { color: var(--bad); }
+.scroll-x { overflow-x: auto; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+.nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.nav button { background: #2a3142; color: var(--text); border: 1px solid var(--border);
+               border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
+.nav button:hover { background: var(--accent); color: #0f1218; }
+.controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.controls label { font-weight: 600; font-size: 13px; }
+.controls input[type=range] { flex: 1; min-width: 200px; }
+.controls input[type=number] { background: #0f1218; color: var(--text);
+                                border: 1px solid var(--border); border-radius: 4px;
+                                padding: 6px 10px; width: 80px; font-size: 14px; }
+.badge { display: inline-block; background: #2a3142; color: var(--text);
+         padding: 4px 10px; border-radius: 4px; font-size: 12px;
+         font-family: "Consolas", monospace; }
+.chart-wrap { position: relative; height: 220px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; margin-top: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .dot { width: 12px; height: 12px; border-radius: 2px; }
+footer { color: var(--muted); text-align: center; font-size: 12px; padding: 24px; }
+.formula { background: #0f1218; border-left: 3px solid var(--accent);
+            padding: 8px 14px; font-family: "Consolas", monospace;
+            font-size: 12px; color: var(--muted); margin: 8px 0; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.pill.ok { background: rgba(74,222,128,0.15); color: var(--ok); }
+.pill.warn { background: rgba(255,107,53,0.15); color: var(--warn); }
+.pill.bad { background: rgba(239,68,68,0.15); color: var(--bad); }
+</style>
+</head>
+<body>
+<header>
+    <h1>⚔️ Combat Simulator <span class="v">v8.3</span> Report</h1>
+    <p>40 level • Điểm cộng chỉ số theo từng level (nội suy từ 9 mốc) • Điểm cộng ở kèo khắc chế</p>
+    <p style="font-size:12px;margin-top:4px;">Vòng khắc chế: <strong>Búa > Kéo > Bao > Búa</strong> (RPS truyền thống) • 6 COUNTER keys tăng đơn điệu theo progression Lv.1→40</p>
+</header>
+
+<main>
+
+<!-- SUMMARY -->
+<section class="section">
+    <h2>① Đánh giá tổng hợp</h2>
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="label">Mục tiêu 1 — Số lượt (±8% Lv.10+, ±12% Lv.&lt;10)</div>
+            <div class="value" id="sum-turn">–</div>
+            <div class="sub">đạt / tổng mốc</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Mục tiêu 2a — Winrate counter (≥95%)</div>
+            <div class="value" id="sum-win">–</div>
+            <div class="sub">đạt / tổng (27 kèo × 2 chiều)</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">Mục tiêu 2b — HP remaining (10-35%)</div>
+            <div class="value" id="sum-hp">–</div>
+            <div class="sub">đạt / tổng (27 kèo × 2 chiều)</div>
+        </div>
+    </div>
+    <p style="color:var(--muted);font-size:12px;margin:0;">
+        N=<span id="sum-n"></span> trận/kèo/level. Số lượt đánh = trung bình qua 3 kèo mỗi hệ. Winrate/HP ở 3 kèo khắc chế × 2 chiều đi trước/sau.
+    </p>
+</section>
+
+<!-- ② BASE STATS 40 LEVEL -->
+<section class="section">
+    <h2>② Base stats theo từng level (nội suy từ base + 4 giai đoạn growth)</h2>
+    <div class="desc">Mỗi hệ cộng dồn base + growth theo 4 giai đoạn [2-10], [11-20], [21-30], [31-40]. Hiển thị 40 level.</div>
+    <div class="scroll-x">
+    <table id="tbl-base">
+        <thead>
+            <tr>
+                <th rowspan="2">Lv</th>
+                <th colspan="6" class="s">✂️ Hệ Kéo</th>
+                <th colspan="6" class="r">🔨 Hệ Búa</th>
+                <th colspan="6" class="p">📄 Hệ Bao</th>
+            </tr>
+            <tr>
+                <th class="s">HP</th><th class="s">ATK</th><th class="s">DEF</th><th class="s">LUCK</th><th class="s">dmgRed%</th><th class="s">passive%</th>
+                <th class="r">HP</th><th class="r">ATK</th><th class="r">DEF</th><th class="r">LUCK</th><th class="r">dmgRed%</th><th class="r">passive%</th>
+                <th class="p">HP</th><th class="p">ATK</th><th class="p">DEF</th><th class="p">LUCK</th><th class="p">dmgRed%</th><th class="p">passive%</th>
+            </tr>
+        </thead>
+        <tbody id="tbody-base"></tbody>
+    </table>
+    </div>
+    <div class="formula">dmgRed(def) = 1 - 0.98^(def^0.8), cap 95% &nbsp; | &nbsp; passiveChance(luck) = 1 - 0.99^(luck^0.75), cap 50%</div>
+</section>
+
+<!-- ③ COUNTER BONUS 40 LEVEL × 3 KÈO -->
+<section class="section">
+    <h2>③ Điểm cộng chỉ số ở kèo khắc chế (40 level × 3 kèo)</h2>
+    <div class="desc">Khi hệ khắc chế thắng (counter side), được cộng thêm stats theo level. Nội suy tuyến tính từ 9 mốc (Lv.1, 5, 10, 15, 20, 25, 30, 35, 40).</div>
+
+    <h3 style="font-size:14px;color:var(--warn);margin:14px 0 8px;">Búa vs Kéo — Búa (counter) được +def, +HP</h3>
+    <div class="scroll-x">
+    <table id="tbl-counter-rock">
+        <thead><tr><th>Lv</th><th class="c">+DEF</th><th class="c">+HP</th><th>Lv</th><th class="c">+DEF</th><th class="c">+HP</th></tr></thead>
+        <tbody id="tbody-counter-rock"></tbody>
+    </table>
+    </div>
+
+    <h3 style="font-size:14px;color:var(--warn);margin:14px 0 8px;">Kéo vs Bao — Kéo (counter) được +dmg%, +luck</h3>
+    <div class="scroll-x">
+    <table id="tbl-counter-scissors">
+        <thead><tr><th>Lv</th><th class="c">+dmg%</th><th class="c">+luck</th><th>Lv</th><th class="c">+dmg%</th><th class="c">+luck</th></tr></thead>
+        <tbody id="tbody-counter-scissors"></tbody>
+    </table>
+    </div>
+
+    <h3 style="font-size:14px;color:var(--warn);margin:14px 0 8px;">Bao vs Búa — Bao (counter) được +HP, +luck</h3>
+    <div class="scroll-x">
+    <table id="tbl-counter-paper">
+        <thead><tr><th>Lv</th><th class="c">+HP</th><th class="c">+luck</th><th>Lv</th><th class="c">+HP</th><th class="c">+luck</th></tr></thead>
+        <tbody id="tbody-counter-paper"></tbody>
+    </table>
+    </div>
+</section>
+
+<!-- ④ MIRROR DEBUFF 40 LEVEL × 3 HỆ -->
+<section class="section">
+    <h2>④ Mirror debuff — khi 2 bên cùng hệ (40 level)</h2>
+    <div class="desc">Kéo vs Kéo: dmg_mult; Búa vs Búa: def_mult; Bao vs Bao: all_mult (giảm nhẹ toàn stats). Mult càng thấp = càng bị debuff.</div>
+    <div class="scroll-x">
+    <table id="tbl-mirror">
+        <thead>
+            <tr>
+                <th>Lv</th><th class="m">Kéo dmg_mult</th>
+                <th class="m">Búa def_mult</th><th class="m">Bao all_mult</th>
+                <th>Lv</th><th class="m">Kéo dmg_mult</th>
+                <th class="m">Búa def_mult</th><th class="m">Bao all_mult</th>
+            </tr>
+        </thead>
+        <tbody id="tbody-mirror"></tbody>
+    </table>
+    </div>
+</section>
+
+<!-- ⑤ TURN COUNT -->
+<section class="section">
+    <h2>⑤ Số lượt đánh trung bình (9 mốc level × 3 hệ)</h2>
+    <div class="desc">Target: Kéo 7.5→16, Búa 9→20, Bao 8→18 (Lv.1→40). Sai số: ±12% Lv.&lt;10, ±8% Lv.10+.</div>
+    <div class="scroll-x">
+    <table id="tbl-turn">
+        <thead>
+            <tr>
+                <th>Hệ</th>
+                <th>Lv.1</th><th>Lv.5</th><th>Lv.10</th><th>Lv.15</th><th>Lv.20</th>
+                <th>Lv.25</th><th>Lv.30</th><th>Lv.35</th><th>Lv.40</th>
+            </tr>
+        </thead>
+        <tbody id="tbody-turn"></tbody>
+    </table>
+    </div>
+</section>
+
+<!-- ⑥ WINRATE 9 kèo × 9 mốc level -->
+<section class="section">
+    <h2>⑥ Winrate từng kèo (9 mốc level)</h2>
+    <div class="desc">Counter khắc chế phải thắng ≥95% cả 2 chiều. Mirror 50/50.</div>
+    <div class="scroll-x">
+    <table id="tbl-win">
+        <thead>
+            <tr>
+                <th>Kèo</th>
+                <th>Lv.1</th><th>Lv.5</th><th>Lv.10</th><th>Lv.15</th><th>Lv.20</th>
+                <th>Lv.25</th><th>Lv.30</th><th>Lv.35</th><th>Lv.40</th>
+            </tr>
+        </thead>
+        <tbody id="tbody-win"></tbody>
+    </table>
+    </div>
+</section>
+
+<!-- ⑦ HP remaining -->
+<section class="section">
+    <h2>⑦ HP còn lại TB khi bên khắc chế thắng (9 mốc level, 2 chiều)</h2>
+    <div class="desc">Target: 10-35%. Bao gồm cả 2 chiều (counter đi trước và counter đi sau).</div>
+    <div class="scroll-x">
+    <table id="tbl-hp">
+        <thead>
+            <tr>
+                <th>Kèo / chiều</th>
+                <th>Lv.1</th><th>Lv.5</th><th>Lv.10</th><th>Lv.15</th><th>Lv.20</th>
+                <th>Lv.25</th><th>Lv.30</th><th>Lv.35</th><th>Lv.40</th>
+            </tr>
+        </thead>
+        <tbody id="tbody-hp"></tbody>
+    </table>
+    </div>
+</section>
+
+<!-- ⑧ CHART -->
+<section class="section">
+    <h2>⑧ Biểu đồ điểm cộng chỉ số theo level</h2>
+    <div class="controls">
+        <label>Loại:</label>
+        <select id="chart-type">
+            <option value="counter">Counter bonus (3 kèo)</option>
+            <option value="mirror">Mirror debuff (3 hệ)</option>
+            <option value="base">Base stats (HP/ATK/DEF/LUCK)</option>
+        </select>
+    </div>
+    <div class="chart-wrap"><canvas id="chart"></canvas></div>
+    <div class="legend" id="chart-legend"></div>
+</section>
+
+<footer>
+    Generated by report_html_v8_3.js • Combat Simulator v8.3
+</footer>
+
+</main>
+
+<script>
+function num0(x){return Math.round(x).toString()}
+function num1(x){return Number(x).toFixed(1)}
+function num2(x){return Number(x).toFixed(2)}
+function num3(x){return Number(x).toFixed(3)}
+function pct1(x){return (x*100).toFixed(1)+'%'}
+function pct0(x){return Math.round(x*100)+'%'}
+const DATA = {"levels":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40],"baseStats":{"SCISSORS":[{"lv":1,"hp":100,"atk":16,"def":2,"luck":7,"dmgRed":0.03456350788057938,"passiveChance":0.04232977390998094},{"lv":2,"hp":116,"atk":17.6,"def":2.1,"luck":7.6,"dmgRed":0.03591426990166713,"passiveChance":0.044961369779501936},{"lv":3,"hp":132,"atk":19.200000000000003,"def":2.2,"luck":8.2,"dmgRed":0.037250360194243326,"passiveChance":0.04753445511098442},{"lv":4,"hp":148,"atk":20.800000000000004,"def":2.3000000000000003,"luck":8.799999999999999,"dmgRed":0.038572528115229376,"passiveChance":0.05005410816446554},{"lv":5,"hp":164,"atk":22.400000000000006,"def":2.4000000000000004,"luck":9.399999999999999,"dmgRed":0.039881452561713826,"passiveChance":0.05252464226067588},{"lv":6,"hp":180,"atk":24.000000000000007,"def":2.5000000000000004,"luck":9.999999999999998,"dmgRed":0.0411777512831798,"passiveChance":0.054949762782486866},{"lv":7,"hp":196,"atk":25.60000000000001,"def":2.6000000000000005,"luck":10.599999999999998,"dmgRed":0.0424619886385158,"passiveChance":0.05733268444147921},{"lv":8,"hp":212,"atk":27.20000000000001,"def":2.7000000000000006,"luck":11.199999999999998,"dmgRed":0.043734682107472445,"passiveChance":0.059676220549996994},{"lv":9,"hp":228,"atk":28.80000000000001,"def":2.8000000000000007,"luck":11.799999999999997,"dmgRed":0.04499630779536978,"passiveChance":0.06198285212592092},{"lv":10,"hp":244,"atk":30.400000000000013,"def":2.900000000000001,"luck":12.399999999999997,"dmgRed":0.04624730511717312,"passiveChance":0.06425478218156555},{"lv":11,"hp":270,"atk":33.40000000000001,"def":3.2000000000000006,"luck":13.099999999999996,"dmgRed":0.04994045107671796,"passiveChance":0.06686412279845066},{"lv":12,"hp":296,"atk":36.40000000000001,"def":3.5000000000000004,"luck":13.799999999999995,"dmgRed":0.05355098136826464,"passiveChance":0.06943168716003179},{"lv":13,"hp":322,"atk":39.40000000000001,"def":3.8000000000000003,"luck":14.499999999999995,"dmgRed":0.05708668899705027,"passiveChance":0.07195995007050238},{"lv":14,"hp":348,"atk":42.40000000000001,"def":4.1000000000000005,"luck":15.199999999999994,"dmgRed":0.060554045425102454,"passiveChance":0.07445112371962581},{"lv":15,"hp":374,"atk":45.40000000000001,"def":4.4,"luck":15.899999999999993,"dmgRed":0.06395850644220924,"passiveChance":0.07690719649144506},{"lv":16,"hp":400,"atk":48.40000000000001,"def":4.7,"luck":16.599999999999994,"dmgRed":0.0673047310671201,"passiveChance":0.0793299645748703},{"lv":17,"hp":426,"atk":51.40000000000001,"def":5,"luck":17.299999999999994,"dmgRed":0.07059674220898682,"passiveChance":0.08172105795909501},{"lv":18,"hp":452,"atk":54.40000000000001,"def":5.3,"luck":17.999999999999993,"dmgRed":0.07383804716598497,"passiveChance":0.08408196199863105},{"lv":19,"hp":478,"atk":57.40000000000001,"def":5.6,"luck":18.699999999999992,"dmgRed":0.07703172971721806,"passiveChance":0.0864140354463444},{"lv":20,"hp":504,"atk":60.40000000000001,"def":5.8999999999999995,"luck":19.39999999999999,"dmgRed":0.08018052167490852,"passiveChance":0.08871852564384819},{"lv":21,"hp":526,"atk":63.80000000000001,"def":6.249999999999999,"luck":20.199999999999992,"dmgRed":0.08380061150713347,"passiveChance":0.09131992292625202},{"lv":22,"hp":548,"atk":67.20000000000002,"def":6.599999999999999,"luck":20.999999999999993,"dmgRed":0.08736634910989571,"passiveChance":0.09388836662870159},{"lv":23,"hp":570,"atk":70.60000000000002,"def":6.949999999999998,"luck":21.799999999999994,"dmgRed":0.09088079015476924,"passiveChance":0.09642530146276562},{"lv":24,"hp":592,"atk":74.00000000000003,"def":7.299999999999998,"luck":22.599999999999994,"dmgRed":0.0943466643006814,"passiveChance":0.09893205632529123},{"lv":25,"hp":614,"atk":77.40000000000003,"def":7.649999999999998,"luck":23.399999999999995,"dmgRed":0.09776642434725302,"passiveChance":0.10140985741976383},{"lv":26,"hp":636,"atk":80.80000000000004,"def":7.999999999999997,"luck":24.199999999999996,"dmgRed":0.10114228604363606,"passiveChance":0.10385983949034838},{"lv":27,"hp":658,"atk":84.20000000000005,"def":8.349999999999998,"luck":24.999999999999996,"dmgRed":0.10447626066283533,"passiveChance":0.1062830554936991},{"lv":28,"hp":680,"atk":87.60000000000005,"def":8.699999999999998,"luck":25.799999999999997,"dmgRed":0.10777018190623477,"passiveChance":0.10868048496899607},{"lv":29,"hp":702,"atk":91.00000000000006,"def":9.049999999999997,"luck":26.599999999999998,"dmgRed":0.11102572831502988,"passiveChance":0.11105304131649796},{"lv":30,"hp":724,"atk":94.40000000000006,"def":9.399999999999997,"luck":27.4,"dmgRed":0.11424444208479756,"passiveChance":0.11340157815561358},{"lv":31,"hp":758,"atk":98.40000000000006,"def":9.849999999999996,"luck":28.4,"dmgRed":0.11833094252232002,"passiveChance":0.11630468487395951},{"lv":32,"hp":792,"atk":102.40000000000006,"def":10.299999999999995,"luck":29.4,"dmgRed":0.12236166316812414,"passiveChance":0.1191729608500075},{"lv":33,"hp":826,"atk":106.40000000000006,"def":10.749999999999995,"luck":30.4,"dmgRed":0.12633911751834248,"passiveChance":0.12200775295491617},{"lv":34,"hp":860,"atk":110.40000000000006,"def":11.199999999999994,"luck":31.4,"dmgRed":0.13026559947491922,"passiveChance":0.12481031194624481},{"lv":35,"hp":894,"atk":114.40000000000006,"def":11.649999999999993,"luck":32.4,"dmgRed":0.134143210915604,"passiveChance":0.1275818022337094},{"lv":36,"hp":928,"atk":118.40000000000006,"def":12.099999999999993,"luck":33.4,"dmgRed":0.13797388485420048,"passiveChance":0.1303233103790996},{"lv":37,"hp":962,"atk":122.40000000000006,"def":12.549999999999992,"luck":34.4,"dmgRed":0.14175940503557616,"passiveChance":0.1330358525276052},{"lv":38,"hp":996,"atk":126.40000000000006,"def":12.999999999999991,"luck":35.4,"dmgRed":0.14550142262355936,"passiveChance":0.13572038093220695},{"lv":39,"hp":1030,"atk":130.40000000000006,"def":13.44999999999999,"luck":36.4,"dmgRed":0.1492014704996536,"passiveChance":0.1383777897044406},{"lv":40,"hp":1064,"atk":134.40000000000006,"def":13.89999999999999,"luck":37.4,"dmgRed":0.15286097558388367,"passiveChance":0.14100891990211617}],"ROCK":[{"lv":1,"hp":110,"atk":13,"def":6,"luck":5,"dmgRed":0.08122057198590671,"passiveChance":0.0330469368378532},{"lv":2,"hp":126,"atk":14,"def":6.7,"luck":5.3,"dmgRed":0.08837558444484084,"passiveChance":0.034497410806879514},{"lv":3,"hp":142,"atk":15,"def":7.4,"luck":5.6,"dmgRed":0.09532834308244686,"passiveChance":0.03592536145044467},{"lv":4,"hp":158,"atk":16,"def":8.1,"luck":5.8999999999999995,"dmgRed":0.10209904110059631,"passiveChance":0.037332235150716375},{"lv":5,"hp":174,"atk":17,"def":8.799999999999999,"luck":6.199999999999999,"dmgRed":0.10870418397058657,"passiveChance":0.03871931517430216},{"lv":6,"hp":190,"atk":18,"def":9.499999999999998,"luck":6.499999999999999,"dmgRed":0.11515751115263229,"passiveChance":0.04008774710122898},{"lv":7,"hp":206,"atk":19,"def":10.199999999999998,"luck":6.799999999999999,"dmgRed":0.1214706355777998,"passiveChance":0.04143855929787843},{"lv":8,"hp":222,"atk":20,"def":10.899999999999997,"luck":7.099999999999999,"dmgRed":0.1276535009282398,"passiveChance":0.042772679575903916},{"lv":9,"hp":238,"atk":21,"def":11.599999999999996,"luck":7.399999999999999,"dmgRed":0.1337147171008103,"passiveChance":0.04409094887884524},{"lv":10,"hp":254,"atk":22,"def":12.299999999999995,"luck":7.699999999999998,"dmgRed":0.13966181176455983,"passiveChance":0.04539413262580205},{"lv":11,"hp":282,"atk":23.6,"def":13.199999999999996,"luck":8.099999999999998,"dmgRed":0.1471509826513857,"passiveChance":0.04710944482651247},{"lv":12,"hp":310,"atk":25.200000000000003,"def":14.099999999999996,"luck":8.499999999999998,"dmgRed":0.1544747600553512,"passiveChance":0.048800675231234436},{"lv":13,"hp":338,"atk":26.800000000000004,"def":14.999999999999996,"luck":8.899999999999999,"dmgRed":0.16164386545359466,"passiveChance":0.05046916800617385},{"lv":14,"hp":366,"atk":28.400000000000006,"def":15.899999999999997,"luck":9.299999999999999,"dmgRed":0.1686676955194838,"passiveChance":0.052116133745942594},{"lv":15,"hp":394,"atk":30.000000000000007,"def":16.799999999999997,"luck":9.7,"dmgRed":0.17555455500326944,"passiveChance":0.05374266795930327},{"lv":16,"hp":422,"atk":31.60000000000001,"def":17.699999999999996,"luck":10.1,"dmgRed":0.18231183812331797,"passiveChance":0.05534976633817412},{"lv":17,"hp":450,"atk":33.20000000000001,"def":18.599999999999994,"luck":10.5,"dmgRed":0.18894617192334895,"passiveChance":0.056938337474979894},{"lv":18,"hp":478,"atk":34.80000000000001,"def":19.499999999999993,"luck":10.9,"dmgRed":0.19546353104850078,"passiveChance":0.058509213535811844},{"lv":19,"hp":506,"atk":36.40000000000001,"def":20.39999999999999,"luck":11.3,"dmgRed":0.201869330712088,"passiveChance":0.060063159281009804},{"lv":20,"hp":534,"atk":38.000000000000014,"def":21.29999999999999,"luck":11.700000000000001,"dmgRed":0.20816850278982257,"passiveChance":0.06160087973854467},{"lv":21,"hp":568,"atk":40.000000000000014,"def":22.39999999999999,"luck":12.100000000000001,"dmgRed":0.21572923802053445,"passiveChance":0.06312302677063053},{"lv":22,"hp":602,"atk":42.000000000000014,"def":23.499999999999993,"luck":12.500000000000002,"dmgRed":0.2231449070680176,"passiveChance":0.06463020472455683},{"lv":23,"hp":636,"atk":44.000000000000014,"def":24.599999999999994,"luck":12.900000000000002,"dmgRed":0.23042230565949617,"passiveChance":0.06612297532070743},{"lv":24,"hp":670,"atk":46.000000000000014,"def":25.699999999999996,"luck":13.300000000000002,"dmgRed":0.2375676215201099,"passiveChance":0.06760186190123596},{"lv":25,"hp":704,"atk":48.000000000000014,"def":26.799999999999997,"luck":13.700000000000003,"dmgRed":0.244586514013579,"passiveChance":0.0690673531397592},{"lv":26,"hp":738,"atk":50.000000000000014,"def":27.9,"luck":14.100000000000003,"dmgRed":0.25148418040097087,"passiveChance":0.07051990629421168},{"lv":27,"hp":772,"atk":52.000000000000014,"def":29,"luck":14.500000000000004,"dmgRed":0.25826541141483317,"passiveChance":0.07195995007050238},{"lv":28,"hp":806,"atk":54.000000000000014,"def":30.1,"luck":14.900000000000004,"dmgRed":0.26493463821939556,"passiveChance":0.07338788715301203},{"lv":29,"hp":840,"atk":56.000000000000014,"def":31.200000000000003,"luck":15.300000000000004,"dmgRed":0.271495972364301,"passiveChance":0.07480409644861097},{"lv":30,"hp":874,"atk":58.000000000000014,"def":32.300000000000004,"luck":15.700000000000005,"dmgRed":0.2779532399925383,"passiveChance":0.07620893508328552},{"lv":31,"hp":916,"atk":60.40000000000001,"def":33.6,"luck":16.200000000000003,"dmgRed":0.2854552551827344,"passiveChance":0.0779495052036211},{"lv":32,"hp":958,"atk":62.80000000000001,"def":34.9,"luck":16.700000000000003,"dmgRed":0.2928223789582377,"passiveChance":0.07967345249200863},{"lv":33,"hp":1000,"atk":65.20000000000002,"def":36.199999999999996,"luck":17.200000000000003,"dmgRed":0.3000596938573007,"passiveChance":0.0813813547132285},{"lv":34,"hp":1042,"atk":67.60000000000002,"def":37.49999999999999,"luck":17.700000000000003,"dmgRed":0.3071719263714976,"passiveChance":0.08307375277680118},{"lv":35,"hp":1084,"atk":70.00000000000003,"def":38.79999999999999,"luck":18.200000000000003,"dmgRed":0.3141634841126385,"passiveChance":0.08475115407701816},{"lv":36,"hp":1126,"atk":72.40000000000003,"def":40.09999999999999,"luck":18.700000000000003,"dmgRed":0.3210384879283795,"passiveChance":0.0864140354463444},{"lv":37,"hp":1168,"atk":74.80000000000004,"def":41.399999999999984,"luck":19.200000000000003,"dmgRed":0.327800799798855,"passiveChance":0.08806284577611234},{"lv":38,"hp":1210,"atk":77.20000000000005,"def":42.69999999999998,"luck":19.700000000000003,"dmgRed":0.3344540471872465,"passiveChance":0.08969800834969988},{"lv":39,"hp":1252,"atk":79.60000000000005,"def":43.99999999999998,"luck":20.200000000000003,"dmgRed":0.3410016443923074,"passiveChance":0.09131992292625202},{"lv":40,"hp":1294,"atk":82.00000000000006,"def":45.299999999999976,"luck":20.700000000000003,"dmgRed":0.347446811352192,"passiveChance":0.09292896760715108}],"PAPER":[{"lv":1,"hp":85,"atk":14,"def":4,"luck":5,"dmgRed":0.05940549954783225,"passiveChance":0.0330469368378532},{"lv":2,"hp":97,"atk":15.6,"def":4.4,"luck":5.3,"dmgRed":0.06395850644220924,"passiveChance":0.034497410806879514},{"lv":3,"hp":109,"atk":17.2,"def":4.800000000000001,"luck":5.6,"dmgRed":0.06840790901225124,"passiveChance":0.03592536145044467},{"lv":4,"hp":121,"atk":18.8,"def":5.200000000000001,"luck":5.8999999999999995,"dmgRed":0.07276304798873967,"passiveChance":0.037332235150716375},{"lv":5,"hp":133,"atk":20.400000000000002,"def":5.600000000000001,"luck":6.199999999999999,"dmgRed":0.07703172971721806,"passiveChance":0.03871931517430216},{"lv":6,"hp":145,"atk":22.000000000000004,"def":6.000000000000002,"luck":6.499999999999999,"dmgRed":0.08122057198590671,"passiveChance":0.04008774710122898},{"lv":7,"hp":157,"atk":23.600000000000005,"def":6.400000000000002,"luck":6.799999999999999,"dmgRed":0.08533525384273322,"passiveChance":0.04143855929787843},{"lv":8,"hp":169,"atk":25.200000000000006,"def":6.8000000000000025,"luck":7.099999999999999,"dmgRed":0.08938070042794477,"passiveChance":0.042772679575903916},{"lv":9,"hp":181,"atk":26.800000000000008,"def":7.200000000000003,"luck":7.399999999999999,"dmgRed":0.09336122257775747,"passiveChance":0.04409094887884524},{"lv":10,"hp":193,"atk":28.40000000000001,"def":7.600000000000003,"luck":7.699999999999998,"dmgRed":0.09728062417957462,"passiveChance":0.04539413262580205},{"lv":11,"hp":217,"atk":30.60000000000001,"def":8.200000000000003,"luck":8.099999999999998,"dmgRed":0.10305242202919151,"passiveChance":0.04710944482651247},{"lv":12,"hp":241,"atk":32.80000000000001,"def":8.800000000000002,"luck":8.499999999999998,"dmgRed":0.10870418397058668,"passiveChance":0.048800675231234436},{"lv":13,"hp":265,"atk":35.000000000000014,"def":9.400000000000002,"luck":8.899999999999999,"dmgRed":0.11424444208479756,"passiveChance":0.05046916800617385},{"lv":14,"hp":289,"atk":37.20000000000002,"def":10.000000000000002,"luck":9.299999999999999,"dmgRed":0.11968058484726352,"passiveChance":0.052116133745942594},{"lv":15,"hp":313,"atk":39.40000000000002,"def":10.600000000000001,"luck":9.7,"dmgRed":0.12501907208493468,"passiveChance":0.05374266795930327},{"lv":16,"hp":337,"atk":41.60000000000002,"def":11.200000000000001,"luck":10.1,"dmgRed":0.13026559947491922,"passiveChance":0.05534976633817412},{"lv":17,"hp":361,"atk":43.800000000000026,"def":11.8,"luck":10.5,"dmgRed":0.13542522652041689,"passiveChance":0.056938337474979894},{"lv":18,"hp":385,"atk":46.00000000000003,"def":12.4,"luck":10.9,"dmgRed":0.1405024775736593,"passiveChance":0.058509213535811844},{"lv":19,"hp":409,"atk":48.20000000000003,"def":13,"luck":11.3,"dmgRed":0.14550142262355947,"passiveChance":0.060063159281009804},{"lv":20,"hp":433,"atk":50.400000000000034,"def":13.6,"luck":11.700000000000001,"dmgRed":0.15042574265677144,"passiveChance":0.06160087973854467},{"lv":21,"hp":463,"atk":53.000000000000036,"def":14.299999999999999,"luck":12.200000000000001,"dmgRed":0.15608091154986647,"passiveChance":0.06350120197424769},{"lv":22,"hp":493,"atk":55.60000000000004,"def":14.999999999999998,"luck":12.700000000000001,"dmgRed":0.16164386545359477,"passiveChance":0.06537835737986664},{"lv":23,"hp":523,"atk":58.20000000000004,"def":15.699999999999998,"luck":13.200000000000001,"dmgRed":0.16711895838118018,"passiveChance":0.06723341459779775},{"lv":24,"hp":553,"atk":60.80000000000004,"def":16.4,"luck":13.700000000000001,"dmgRed":0.17251014597842762,"passiveChance":0.0690673531397592},{"lv":25,"hp":583,"atk":63.40000000000004,"def":17.099999999999998,"luck":14.200000000000001,"dmgRed":0.1778210382450689,"passiveChance":0.07088107383612252},{"lv":26,"hp":613,"atk":66.00000000000004,"def":17.799999999999997,"luck":14.700000000000001,"dmgRed":0.18305494335723183,"passiveChance":0.07267540773403469},{"lv":27,"hp":643,"atk":68.60000000000004,"def":18.499999999999996,"luck":15.200000000000001,"dmgRed":0.18821490438827104,"passiveChance":0.07445112371962581},{"lv":28,"hp":673,"atk":71.20000000000003,"def":19.199999999999996,"luck":15.700000000000001,"dmgRed":0.193303730307414,"passiveChance":0.07620893508328552},{"lv":29,"hp":703,"atk":73.80000000000003,"def":19.899999999999995,"luck":16.200000000000003,"dmgRed":0.19832402232679203,"passiveChance":0.0779495052036211},{"lv":30,"hp":733,"atk":76.40000000000002,"def":20.599999999999994,"luck":16.700000000000003,"dmgRed":0.2032781964361956,"passiveChance":0.07967345249200863},{"lv":31,"hp":769,"atk":79.20000000000002,"def":21.499999999999993,"luck":17.300000000000004,"dmgRed":0.20955429987054153,"passiveChance":0.08172105795909501},{"lv":32,"hp":805,"atk":82.00000000000001,"def":22.39999999999999,"luck":17.900000000000006,"dmgRed":0.21572923802053445,"passiveChance":0.08374648555090525},{"lv":33,"hp":841,"atk":84.80000000000001,"def":23.29999999999999,"luck":18.500000000000007,"dmgRed":0.2218070786998788,"passiveChance":0.08575059596381285},{"lv":34,"hp":877,"atk":87.60000000000001,"def":24.19999999999999,"luck":19.10000000000001,"dmgRed":0.22779157451227428,"passiveChance":0.08773418872445249},{"lv":35,"hp":913,"atk":90.4,"def":25.099999999999987,"luck":19.70000000000001,"dmgRed":0.2336861987834098,"passiveChance":0.08969800834969988},{"lv":36,"hp":949,"atk":93.2,"def":25.999999999999986,"luck":20.30000000000001,"dmgRed":0.2394941762138053,"passiveChance":0.09164274971653974},{"lv":37,"hp":985,"atk":96,"def":26.899999999999984,"luck":20.900000000000013,"dmgRed":0.2452185091872383,"passiveChance":0.09356906276358501},{"lv":38,"hp":1021,"atk":98.8,"def":27.799999999999983,"luck":21.500000000000014,"dmgRed":0.25086200047790197,"passiveChance":0.09547755662428725},{"lv":39,"hp":1057,"atk":101.6,"def":28.69999999999998,"luck":22.100000000000016,"dmgRed":0.25642727295209766,"passiveChance":0.0973688032745228},{"lv":40,"hp":1093,"atk":104.39999999999999,"def":29.59999999999998,"luck":22.700000000000017,"dmgRed":0.2619167867458805,"passiveChance":0.09924334076328956}]},"counterBonus":{"Búa vs Kéo":[{"lv":1,"rock_vs_scissors_def":14,"rock_vs_scissors_hp":28},{"lv":2,"rock_vs_scissors_def":17,"rock_vs_scissors_hp":34},{"lv":3,"rock_vs_scissors_def":20,"rock_vs_scissors_hp":40},{"lv":4,"rock_vs_scissors_def":23,"rock_vs_scissors_hp":46},{"lv":5,"rock_vs_scissors_def":26,"rock_vs_scissors_hp":52},{"lv":6,"rock_vs_scissors_def":31.2,"rock_vs_scissors_hp":62.4},{"lv":7,"rock_vs_scissors_def":36.4,"rock_vs_scissors_hp":72.8},{"lv":8,"rock_vs_scissors_def":41.6,"rock_vs_scissors_hp":83.2},{"lv":9,"rock_vs_scissors_def":46.8,"rock_vs_scissors_hp":93.6},{"lv":10,"rock_vs_scissors_def":52,"rock_vs_scissors_hp":104},{"lv":11,"rock_vs_scissors_def":57.6,"rock_vs_scissors_hp":115.2},{"lv":12,"rock_vs_scissors_def":63.2,"rock_vs_scissors_hp":126.4},{"lv":13,"rock_vs_scissors_def":68.8,"rock_vs_scissors_hp":137.6},{"lv":14,"rock_vs_scissors_def":74.4,"rock_vs_scissors_hp":148.8},{"lv":15,"rock_vs_scissors_def":80,"rock_vs_scissors_hp":160},{"lv":16,"rock_vs_scissors_def":85,"rock_vs_scissors_hp":170},{"lv":17,"rock_vs_scissors_def":90,"rock_vs_scissors_hp":180},{"lv":18,"rock_vs_scissors_def":95,"rock_vs_scissors_hp":190},{"lv":19,"rock_vs_scissors_def":100,"rock_vs_scissors_hp":200},{"lv":20,"rock_vs_scissors_def":105,"rock_vs_scissors_hp":210},{"lv":21,"rock_vs_scissors_def":109.6,"rock_vs_scissors_hp":218.4},{"lv":22,"rock_vs_scissors_def":114.2,"rock_vs_scissors_hp":226.8},{"lv":23,"rock_vs_scissors_def":118.8,"rock_vs_scissors_hp":235.2},{"lv":24,"rock_vs_scissors_def":123.4,"rock_vs_scissors_hp":243.6},{"lv":25,"rock_vs_scissors_def":128,"rock_vs_scissors_hp":252},{"lv":26,"rock_vs_scissors_def":131.2,"rock_vs_scissors_hp":258},{"lv":27,"rock_vs_scissors_def":134.4,"rock_vs_scissors_hp":264},{"lv":28,"rock_vs_scissors_def":137.6,"rock_vs_scissors_hp":270},{"lv":29,"rock_vs_scissors_def":140.8,"rock_vs_scissors_hp":276},{"lv":30,"rock_vs_scissors_def":144,"rock_vs_scissors_hp":282},{"lv":31,"rock_vs_scissors_def":146.4,"rock_vs_scissors_hp":286.8},{"lv":32,"rock_vs_scissors_def":148.8,"rock_vs_scissors_hp":291.6},{"lv":33,"rock_vs_scissors_def":151.2,"rock_vs_scissors_hp":296.4},{"lv":34,"rock_vs_scissors_def":153.6,"rock_vs_scissors_hp":301.2},{"lv":35,"rock_vs_scissors_def":156,"rock_vs_scissors_hp":306},{"lv":36,"rock_vs_scissors_def":157.6,"rock_vs_scissors_hp":308.8},{"lv":37,"rock_vs_scissors_def":159.2,"rock_vs_scissors_hp":311.6},{"lv":38,"rock_vs_scissors_def":160.8,"rock_vs_scissors_hp":314.4},{"lv":39,"rock_vs_scissors_def":162.4,"rock_vs_scissors_hp":317.2},{"lv":40,"rock_vs_scissors_def":164,"rock_vs_scissors_hp":320}],"Kéo vs Bao":[{"lv":1,"scissors_vs_paper_dmg":0.04,"scissors_vs_paper_luck":1},{"lv":2,"scissors_vs_paper_dmg":0.05,"scissors_vs_paper_luck":1.5},{"lv":3,"scissors_vs_paper_dmg":0.06,"scissors_vs_paper_luck":2},{"lv":4,"scissors_vs_paper_dmg":0.07,"scissors_vs_paper_luck":2.5},{"lv":5,"scissors_vs_paper_dmg":0.08,"scissors_vs_paper_luck":3},{"lv":6,"scissors_vs_paper_dmg":0.092,"scissors_vs_paper_luck":3.6},{"lv":7,"scissors_vs_paper_dmg":0.10400000000000001,"scissors_vs_paper_luck":4.2},{"lv":8,"scissors_vs_paper_dmg":0.116,"scissors_vs_paper_luck":4.8},{"lv":9,"scissors_vs_paper_dmg":0.128,"scissors_vs_paper_luck":5.4},{"lv":10,"scissors_vs_paper_dmg":0.14,"scissors_vs_paper_luck":6},{"lv":11,"scissors_vs_paper_dmg":0.15200000000000002,"scissors_vs_paper_luck":6.6},{"lv":12,"scissors_vs_paper_dmg":0.164,"scissors_vs_paper_luck":7.2},{"lv":13,"scissors_vs_paper_dmg":0.17600000000000002,"scissors_vs_paper_luck":7.8},{"lv":14,"scissors_vs_paper_dmg":0.188,"scissors_vs_paper_luck":8.4},{"lv":15,"scissors_vs_paper_dmg":0.2,"scissors_vs_paper_luck":9},{"lv":16,"scissors_vs_paper_dmg":0.21200000000000002,"scissors_vs_paper_luck":9.6},{"lv":17,"scissors_vs_paper_dmg":0.224,"scissors_vs_paper_luck":10.2},{"lv":18,"scissors_vs_paper_dmg":0.23600000000000002,"scissors_vs_paper_luck":10.8},{"lv":19,"scissors_vs_paper_dmg":0.248,"scissors_vs_paper_luck":11.4},{"lv":20,"scissors_vs_paper_dmg":0.26,"scissors_vs_paper_luck":12},{"lv":21,"scissors_vs_paper_dmg":0.272,"scissors_vs_paper_luck":12.6},{"lv":22,"scissors_vs_paper_dmg":0.28400000000000003,"scissors_vs_paper_luck":13.2},{"lv":23,"scissors_vs_paper_dmg":0.296,"scissors_vs_paper_luck":13.8},{"lv":24,"scissors_vs_paper_dmg":0.308,"scissors_vs_paper_luck":14.4},{"lv":25,"scissors_vs_paper_dmg":0.32,"scissors_vs_paper_luck":15},{"lv":26,"scissors_vs_paper_dmg":0.332,"scissors_vs_paper_luck":15.6},{"lv":27,"scissors_vs_paper_dmg":0.34400000000000003,"scissors_vs_paper_luck":16.2},{"lv":28,"scissors_vs_paper_dmg":0.356,"scissors_vs_paper_luck":16.8},{"lv":29,"scissors_vs_paper_dmg":0.368,"scissors_vs_paper_luck":17.4},{"lv":30,"scissors_vs_paper_dmg":0.38,"scissors_vs_paper_luck":18},{"lv":31,"scissors_vs_paper_dmg":0.392,"scissors_vs_paper_luck":18.6},{"lv":32,"scissors_vs_paper_dmg":0.404,"scissors_vs_paper_luck":19.2},{"lv":33,"scissors_vs_paper_dmg":0.416,"scissors_vs_paper_luck":19.8},{"lv":34,"scissors_vs_paper_dmg":0.428,"scissors_vs_paper_luck":20.4},{"lv":35,"scissors_vs_paper_dmg":0.44,"scissors_vs_paper_luck":21},{"lv":36,"scissors_vs_paper_dmg":0.452,"scissors_vs_paper_luck":21.6},{"lv":37,"scissors_vs_paper_dmg":0.464,"scissors_vs_paper_luck":22.2},{"lv":38,"scissors_vs_paper_dmg":0.476,"scissors_vs_paper_luck":22.8},{"lv":39,"scissors_vs_paper_dmg":0.488,"scissors_vs_paper_luck":23.4},{"lv":40,"scissors_vs_paper_dmg":0.5,"scissors_vs_paper_luck":24}],"Bao vs Búa":[{"lv":1,"paper_vs_rock_hp":70,"paper_vs_rock_luck":3},{"lv":2,"paper_vs_rock_hp":66.5,"paper_vs_rock_luck":3.75},{"lv":3,"paper_vs_rock_hp":63,"paper_vs_rock_luck":4.5},{"lv":4,"paper_vs_rock_hp":59.5,"paper_vs_rock_luck":5.25},{"lv":5,"paper_vs_rock_hp":56,"paper_vs_rock_luck":6},{"lv":6,"paper_vs_rock_hp":58.8,"paper_vs_rock_luck":7.2},{"lv":7,"paper_vs_rock_hp":61.6,"paper_vs_rock_luck":8.4},{"lv":8,"paper_vs_rock_hp":64.4,"paper_vs_rock_luck":9.6},{"lv":9,"paper_vs_rock_hp":67.2,"paper_vs_rock_luck":10.8},{"lv":10,"paper_vs_rock_hp":70,"paper_vs_rock_luck":12},{"lv":11,"paper_vs_rock_hp":76.4,"paper_vs_rock_luck":13.2},{"lv":12,"paper_vs_rock_hp":82.8,"paper_vs_rock_luck":14.4},{"lv":13,"paper_vs_rock_hp":89.2,"paper_vs_rock_luck":15.6},{"lv":14,"paper_vs_rock_hp":95.6,"paper_vs_rock_luck":16.8},{"lv":15,"paper_vs_rock_hp":102,"paper_vs_rock_luck":18},{"lv":16,"paper_vs_rock_hp":109.6,"paper_vs_rock_luck":19.2},{"lv":17,"paper_vs_rock_hp":117.2,"paper_vs_rock_luck":20.4},{"lv":18,"paper_vs_rock_hp":124.8,"paper_vs_rock_luck":21.6},{"lv":19,"paper_vs_rock_hp":132.4,"paper_vs_rock_luck":22.8},{"lv":20,"paper_vs_rock_hp":140,"paper_vs_rock_luck":24},{"lv":21,"paper_vs_rock_hp":148.4,"paper_vs_rock_luck":24.8},{"lv":22,"paper_vs_rock_hp":156.8,"paper_vs_rock_luck":25.6},{"lv":23,"paper_vs_rock_hp":165.2,"paper_vs_rock_luck":26.4},{"lv":24,"paper_vs_rock_hp":173.6,"paper_vs_rock_luck":27.2},{"lv":25,"paper_vs_rock_hp":182,"paper_vs_rock_luck":28},{"lv":26,"paper_vs_rock_hp":190.4,"paper_vs_rock_luck":28.4},{"lv":27,"paper_vs_rock_hp":198.8,"paper_vs_rock_luck":28.8},{"lv":28,"paper_vs_rock_hp":207.2,"paper_vs_rock_luck":29.2},{"lv":29,"paper_vs_rock_hp":215.6,"paper_vs_rock_luck":29.6},{"lv":30,"paper_vs_rock_hp":224,"paper_vs_rock_luck":30},{"lv":31,"paper_vs_rock_hp":234,"paper_vs_rock_luck":30},{"lv":32,"paper_vs_rock_hp":244,"paper_vs_rock_luck":30},{"lv":33,"paper_vs_rock_hp":254,"paper_vs_rock_luck":30},{"lv":34,"paper_vs_rock_hp":264,"paper_vs_rock_luck":30},{"lv":35,"paper_vs_rock_hp":274,"paper_vs_rock_luck":30},{"lv":36,"paper_vs_rock_hp":284.8,"paper_vs_rock_luck":30},{"lv":37,"paper_vs_rock_hp":295.6,"paper_vs_rock_luck":30},{"lv":38,"paper_vs_rock_hp":306.4,"paper_vs_rock_luck":30},{"lv":39,"paper_vs_rock_hp":317.2,"paper_vs_rock_luck":30},{"lv":40,"paper_vs_rock_hp":328,"paper_vs_rock_luck":30}]},"mirrorDebuff":{"SCISSORS":[{"lv":1,"mult":0.647265625,"type":"dmg_mult"},{"lv":2,"mult":0.6482421875,"type":"dmg_mult"},{"lv":3,"mult":0.64921875,"type":"dmg_mult"},{"lv":4,"mult":0.6501953125,"type":"dmg_mult"},{"lv":5,"mult":0.651171875,"type":"dmg_mult"},{"lv":6,"mult":0.63125,"type":"dmg_mult"},{"lv":7,"mult":0.611328125,"type":"dmg_mult"},{"lv":8,"mult":0.5914062499999999,"type":"dmg_mult"},{"lv":9,"mult":0.5714843749999999,"type":"dmg_mult"},{"lv":10,"mult":0.5515625,"type":"dmg_mult"},{"lv":11,"mult":0.535546875,"type":"dmg_mult"},{"lv":12,"mult":0.51953125,"type":"dmg_mult"},{"lv":13,"mult":0.503515625,"type":"dmg_mult"},{"lv":14,"mult":0.4875,"type":"dmg_mult"},{"lv":15,"mult":0.471484375,"type":"dmg_mult"},{"lv":16,"mult":0.456640625,"type":"dmg_mult"},{"lv":17,"mult":0.44179687500000003,"type":"dmg_mult"},{"lv":18,"mult":0.426953125,"type":"dmg_mult"},{"lv":19,"mult":0.412109375,"type":"dmg_mult"},{"lv":20,"mult":0.397265625,"type":"dmg_mult"},{"lv":21,"mult":0.383984375,"type":"dmg_mult"},{"lv":22,"mult":0.370703125,"type":"dmg_mult"},{"lv":23,"mult":0.357421875,"type":"dmg_mult"},{"lv":24,"mult":0.344140625,"type":"dmg_mult"},{"lv":25,"mult":0.330859375,"type":"dmg_mult"},{"lv":26,"mult":0.32460937500000003,"type":"dmg_mult"},{"lv":27,"mult":0.318359375,"type":"dmg_mult"},{"lv":28,"mult":0.312109375,"type":"dmg_mult"},{"lv":29,"mult":0.305859375,"type":"dmg_mult"},{"lv":30,"mult":0.299609375,"type":"dmg_mult"},{"lv":31,"mult":0.298046875,"type":"dmg_mult"},{"lv":32,"mult":0.296484375,"type":"dmg_mult"},{"lv":33,"mult":0.294921875,"type":"dmg_mult"},{"lv":34,"mult":0.29335937500000003,"type":"dmg_mult"},{"lv":35,"mult":0.291796875,"type":"dmg_mult"},{"lv":36,"mult":0.28945312500000003,"type":"dmg_mult"},{"lv":37,"mult":0.287109375,"type":"dmg_mult"},{"lv":38,"mult":0.284765625,"type":"dmg_mult"},{"lv":39,"mult":0.282421875,"type":"dmg_mult"},{"lv":40,"mult":0.280078125,"type":"dmg_mult"}],"ROCK":[{"lv":1,"mult":0.3021484375,"type":"def_mult"},{"lv":2,"mult":0.3021484375,"type":"def_mult"},{"lv":3,"mult":0.3021484375,"type":"def_mult"},{"lv":4,"mult":0.3021484375,"type":"def_mult"},{"lv":5,"mult":0.3021484375,"type":"def_mult"},{"lv":6,"mult":0.3021484375,"type":"def_mult"},{"lv":7,"mult":0.3021484375,"type":"def_mult"},{"lv":8,"mult":0.3021484375,"type":"def_mult"},{"lv":9,"mult":0.3021484375,"type":"def_mult"},{"lv":10,"mult":0.3021484375,"type":"def_mult"},{"lv":11,"mult":0.3021484375,"type":"def_mult"},{"lv":12,"mult":0.3021484375,"type":"def_mult"},{"lv":13,"mult":0.3021484375,"type":"def_mult"},{"lv":14,"mult":0.3021484375,"type":"def_mult"},{"lv":15,"mult":0.3021484375,"type":"def_mult"},{"lv":16,"mult":0.3021484375,"type":"def_mult"},{"lv":17,"mult":0.3021484375,"type":"def_mult"},{"lv":18,"mult":0.3021484375,"type":"def_mult"},{"lv":19,"mult":0.3021484375,"type":"def_mult"},{"lv":20,"mult":0.3021484375,"type":"def_mult"},{"lv":21,"mult":0.40097656249999997,"type":"def_mult"},{"lv":22,"mult":0.49980468749999996,"type":"def_mult"},{"lv":23,"mult":0.5986328125,"type":"def_mult"},{"lv":24,"mult":0.6974609375,"type":"def_mult"},{"lv":25,"mult":0.7962890625,"type":"def_mult"},{"lv":26,"mult":0.8538671875,"type":"def_mult"},{"lv":27,"mult":0.9114453125,"type":"def_mult"},{"lv":28,"mult":0.9690234375,"type":"def_mult"},{"lv":29,"mult":1.0266015625,"type":"def_mult"},{"lv":30,"mult":1.0841796875,"type":"def_mult"},{"lv":31,"mult":1.1271484375,"type":"def_mult"},{"lv":32,"mult":1.1701171875,"type":"def_mult"},{"lv":33,"mult":1.2130859375,"type":"def_mult"},{"lv":34,"mult":1.2560546875,"type":"def_mult"},{"lv":35,"mult":1.2990234375,"type":"def_mult"},{"lv":36,"mult":1.29515625,"type":"def_mult"},{"lv":37,"mult":1.2912890625,"type":"def_mult"},{"lv":38,"mult":1.2874218750000002,"type":"def_mult"},{"lv":39,"mult":1.2835546875000001,"type":"def_mult"},{"lv":40,"mult":1.2796875,"type":"def_mult"}],"PAPER":[{"lv":1,"mult":0.4015625,"type":"all_mult"},{"lv":2,"mult":0.40625,"type":"all_mult"},{"lv":3,"mult":0.41093749999999996,"type":"all_mult"},{"lv":4,"mult":0.41562499999999997,"type":"all_mult"},{"lv":5,"mult":0.4203125,"type":"all_mult"},{"lv":6,"mult":0.5759375,"type":"all_mult"},{"lv":7,"mult":0.7315625,"type":"all_mult"},{"lv":8,"mult":0.8871875,"type":"all_mult"},{"lv":9,"mult":1.0428125000000001,"type":"all_mult"},{"lv":10,"mult":1.1984375,"type":"all_mult"},{"lv":11,"mult":1.1196875,"type":"all_mult"},{"lv":12,"mult":1.0409375,"type":"all_mult"},{"lv":13,"mult":0.9621875,"type":"all_mult"},{"lv":14,"mult":0.8834375,"type":"all_mult"},{"lv":15,"mult":0.8046875,"type":"all_mult"},{"lv":16,"mult":0.8240625,"type":"all_mult"},{"lv":17,"mult":0.8434375000000001,"type":"all_mult"},{"lv":18,"mult":0.8628125,"type":"all_mult"},{"lv":19,"mult":0.8821875,"type":"all_mult"},{"lv":20,"mult":0.9015625,"type":"all_mult"},{"lv":21,"mult":0.8871875,"type":"all_mult"},{"lv":22,"mult":0.8728125,"type":"all_mult"},{"lv":23,"mult":0.8584375000000001,"type":"all_mult"},{"lv":24,"mult":0.8440625,"type":"all_mult"},{"lv":25,"mult":0.8296875,"type":"all_mult"},{"lv":26,"mult":0.9034375,"type":"all_mult"},{"lv":27,"mult":0.9771875000000001,"type":"all_mult"},{"lv":28,"mult":1.0509375,"type":"all_mult"},{"lv":29,"mult":1.1246875,"type":"all_mult"},{"lv":30,"mult":1.1984375,"type":"all_mult"},{"lv":31,"mult":1.0559375,"type":"all_mult"},{"lv":32,"mult":0.9134375,"type":"all_mult"},{"lv":33,"mult":0.7709375,"type":"all_mult"},{"lv":34,"mult":0.6284375,"type":"all_mult"},{"lv":35,"mult":0.4859375,"type":"all_mult"},{"lv":36,"mult":0.5121875,"type":"all_mult"},{"lv":37,"mult":0.5384375,"type":"all_mult"},{"lv":38,"mult":0.5646875,"type":"all_mult"},{"lv":39,"mult":0.5909375,"type":"all_mult"},{"lv":40,"mult":0.6171875,"type":"all_mult"}]},"sim":{"1":{"ROCK_vs_SCISSORS":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.30064492753623434,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.21283333333332938,"avgHpBWin":0}},"SCISSORS_vs_ROCK":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.21318115942028587},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.3011956521739154}},"SCISSORS_vs_PAPER":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.345190000000003,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.21544999999999911,"avgHpBWin":0}},"PAPER_vs_SCISSORS":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.21531999999999915},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.34714000000000306}},"PAPER_vs_ROCK":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.3084645161290341,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.23250322580644972,"avgHpBWin":0}},"ROCK_vs_PAPER":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.23215483870967557},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.30840000000000206}},"SCISSORS_vs_SCISSORS":{"first":{"winRateA":77,"winRateB":23,"avgHpAWin":0.05276623376623417,"avgHpBWin":0.009999999999999978},"second":{"winRateA":22,"winRateB":78,"avgHpAWin":0.009999999999999986,"avgHpBWin":0.05238461538461574}},"ROCK_vs_ROCK":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.021200000000000094,"avgHpBWin":0},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.021563636363636486}},"PAPER_vs_PAPER":{"first":{"winRateA":92.4,"winRateB":7.6,"avgHpAWin":0.12336324696132646,"avgHpBWin":0.010058907855585395},"second":{"winRateA":7.3,"winRateB":92.7,"avgHpAWin":0.011115047799408652,"avgHpBWin":0.1238931345018605}}},"5":{"ROCK_vs_SCISSORS":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.334389380530975,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.26670796460177265,"avgHpBWin":0}},"SCISSORS_vs_ROCK":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.2673893805309761},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.33427433628318737}},"SCISSORS_vs_PAPER":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.3372012195121986,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.2197256097560979,"avgHpBWin":0}},"PAPER_vs_SCISSORS":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.22389634146341522},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.33650609756097927}},"PAPER_vs_ROCK":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.2918941798941767,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.2154708994709027,"avgHpBWin":0}},"ROCK_vs_PAPER":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.2155502645502677},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.29285185185184853}},"SCISSORS_vs_SCISSORS":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.05598780487804906,"avgHpBWin":0},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.0560731707317076}},"ROCK_vs_ROCK":{"first":{"winRateA":87.3,"winRateB":12.7,"avgHpAWin":0.08425827178048939,"avgHpBWin":0.02013756901077019},"second":{"winRateA":13.100000000000001,"winRateB":86.9,"avgHpAWin":0.021277529174344112,"avgHpBWin":0.08547941219263715}},"PAPER_vs_PAPER":{"first":{"winRateA":88.9,"winRateB":11.1,"avgHpAWin":0.1428569542120234,"avgHpBWin":0.0249913943907291},"second":{"winRateA":10.2,"winRateB":89.8,"avgHpAWin":0.0222659206511796,"avgHpBWin":0.14184580518035475}}},"10":{"ROCK_vs_SCISSORS":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.4295949720670429,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.3802877094972041,"avgHpBWin":0}},"SCISSORS_vs_ROCK":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.3810195530726223},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.4290698324022384}},"SCISSORS_vs_PAPER":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.3548770491803321,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.24499590163934878,"avgHpBWin":0}},"PAPER_vs_SCISSORS":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.23924180327869304},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.3566475409836108}},"PAPER_vs_ROCK":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.2889695817490464,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.2180950570342193,"avgHpBWin":0}},"ROCK_vs_PAPER":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.22027376425855402},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.2884410646387804}},"SCISSORS_vs_SCISSORS":{"first":{"winRateA":78.4,"winRateB":21.6,"avgHpAWin":0.03878282870525269,"avgHpBWin":0.010132058287795972},"second":{"winRateA":22.900000000000002,"winRateB":77.10000000000001,"avgHpAWin":0.009968501682296488,"avgHpBWin":0.03735302247453817}},"ROCK_vs_ROCK":{"first":{"winRateA":85.6,"winRateB":14.399999999999999,"avgHpAWin":0.06112020752078944,"avgHpBWin":0.00997922134733157},"second":{"winRateA":14.6,"winRateB":85.39999999999999,"avgHpAWin":0.008682989968719653,"avgHpBWin":0.06155839126666605}},"PAPER_vs_PAPER":{"first":{"winRateA":89.1,"winRateB":10.9,"avgHpAWin":0.10420316380329225,"avgHpBWin":0.037900504227387596},"second":{"winRateA":10.9,"winRateB":89.1,"avgHpAWin":0.0382971481487978,"avgHpBWin":0.10531919782234436}}},"15":{"ROCK_vs_SCISSORS":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.5273086642599288,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.49068592057761923,"avgHpBWin":0}},"SCISSORS_vs_ROCK":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.49054512635379316},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.5272220216606502}},"SCISSORS_vs_PAPER":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.41774331550802857,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.3169625668449141,"avgHpBWin":0}},"PAPER_vs_SCISSORS":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.320620320855609},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.41909090909091656}},"PAPER_vs_ROCK":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.2709012048192803,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.2118843373493986,"avgHpBWin":0}},"ROCK_vs_PAPER":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.21345301204819384},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.26993493975903937}},"SCISSORS_vs_SCISSORS":{"first":{"winRateA":94.1,"winRateB":5.8999999999999995,"avgHpAWin":0.029866395403683826,"avgHpBWin":0.02637541919695457},"second":{"winRateA":4.8,"winRateB":95.19999999999999,"avgHpAWin":0.02567959001782531,"avgHpBWin":0.02718734552644603}},"ROCK_vs_ROCK":{"first":{"winRateA":90.7,"winRateB":9.3,"avgHpAWin":0.0532463244141734,"avgHpBWin":0.01896730527809619},"second":{"winRateA":9.3,"winRateB":90.7,"avgHpAWin":0.02090497243600242,"avgHpBWin":0.05235925878250986}},"PAPER_vs_PAPER":{"first":{"winRateA":78.10000000000001,"winRateB":21.9,"avgHpAWin":0.11656994917799174,"avgHpBWin":0.05070647437567117},"second":{"winRateA":18.8,"winRateB":81.2,"avgHpAWin":0.04749698561211387,"avgHpBWin":0.11412377720158658}}},"20":{"ROCK_vs_SCISSORS":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.5811814516129027,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.5514717741935501,"avgHpBWin":0}},"SCISSORS_vs_ROCK":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.5515147849462381},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.5809072580645156}},"SCISSORS_vs_PAPER":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.43932936507936887,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.34678174603174194,"avgHpBWin":0}},"PAPER_vs_SCISSORS":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.346142857142853},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.4386904761904791}},"PAPER_vs_ROCK":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.28636823734729533,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.23621989528795806,"avgHpBWin":0}},"ROCK_vs_PAPER":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.23494066317626514},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.2888411867364746}},"SCISSORS_vs_SCISSORS":{"first":{"winRateA":89.60000000000001,"winRateB":10.4,"avgHpAWin":0.030293367346939066,"avgHpBWin":0.023962148962148936},"second":{"winRateA":11.799999999999999,"winRateB":88.2,"avgHpAWin":0.024448479956954497,"avgHpBWin":0.03120613324694983}},"ROCK_vs_ROCK":{"first":{"winRateA":77.10000000000001,"winRateB":22.900000000000002,"avgHpAWin":0.05195596943509318,"avgHpBWin":0.018072387681337166},"second":{"winRateA":24.3,"winRateB":75.7,"avgHpAWin":0.017354849647816733,"avgHpBWin":0.05405478950519218}},"PAPER_vs_PAPER":{"first":{"winRateA":98.4,"winRateB":1.6,"avgHpAWin":0.026299751031900458,"avgHpBWin":0.043551698880488064},"second":{"winRateA":1.2,"winRateB":98.8,"avgHpAWin":0.038535175037990914,"avgHpBWin":0.02577196992023798}}},"25":{"ROCK_vs_SCISSORS":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.6437970711297045,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.6185721757322196,"avgHpBWin":0}},"SCISSORS_vs_ROCK":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.6183619246861941},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.6446987447698713}},"SCISSORS_vs_PAPER":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.4192312703583112,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.3235195439739467,"avgHpBWin":0}},"PAPER_vs_SCISSORS":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.32119869706840926},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.4178387622149886}},"PAPER_vs_ROCK":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.2886470588235293,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.24336601307189618,"avgHpBWin":0}},"ROCK_vs_PAPER":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.2409843137254912},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.2895307189542488}},"SCISSORS_vs_SCISSORS":{"first":{"winRateA":76.8,"winRateB":23.200000000000003,"avgHpAWin":0.02888546756243209,"avgHpBWin":0.014250814332247522},"second":{"winRateA":27.500000000000004,"winRateB":72.5,"avgHpAWin":0.013218833283979806,"avgHpBWin":0.02803998652139722}},"ROCK_vs_ROCK":{"first":{"winRateA":89.9,"winRateB":10.100000000000001,"avgHpAWin":0.02249816715542523,"avgHpBWin":0.010238523852385245},"second":{"winRateA":11.1,"winRateB":88.9,"avgHpAWin":0.010327088452088464,"avgHpBWin":0.02290143419572561}},"PAPER_vs_PAPER":{"first":{"winRateA":72.1,"winRateB":27.900000000000002,"avgHpAWin":0.09733622482899847,"avgHpBWin":0.05073177047070728},"second":{"winRateA":30.2,"winRateB":69.8,"avgHpAWin":0.04846502626572373,"avgHpBWin":0.09372163489413858}}},"30":{"ROCK_vs_SCISSORS":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.6803607266436019,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.6577093425605527,"avgHpBWin":0}},"SCISSORS_vs_ROCK":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.6574005190311407},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.6806972318339141}},"SCISSORS_vs_PAPER":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.4015345303867482,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.30316298342541687,"avgHpBWin":0}},"PAPER_vs_SCISSORS":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.3054765193370187},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.3979254143646483}},"PAPER_vs_ROCK":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.288310344827587,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.24482445141065876,"avgHpBWin":0}},"ROCK_vs_PAPER":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.24698328108672973},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.2897993730407533}},"SCISSORS_vs_SCISSORS":{"first":{"winRateA":76.1,"winRateB":23.9,"avgHpAWin":0.03078967046848793,"avgHpBWin":0.018002034258766966},"second":{"winRateA":25.4,"winRateB":74.6,"avgHpAWin":0.016009048592682817,"avgHpBWin":0.02899441589027297}},"ROCK_vs_ROCK":{"first":{"winRateA":78,"winRateB":22,"avgHpAWin":0.03378806548142929,"avgHpBWin":0.024750364052423566},"second":{"winRateA":23.599999999999998,"winRateB":76.4,"avgHpAWin":0.02420684171741071,"avgHpBWin":0.03502282339128038}},"PAPER_vs_PAPER":{"first":{"winRateA":72.6,"winRateB":27.400000000000002,"avgHpAWin":0.07470560215784824,"avgHpBWin":0.04394987325004488},"second":{"winRateA":27.500000000000004,"winRateB":72.5,"avgHpAWin":0.04163111843644594,"avgHpBWin":0.07915412050169669}}},"35":{"ROCK_vs_SCISSORS":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.7049769784172651,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.6838633093525176,"avgHpBWin":0}},"SCISSORS_vs_ROCK":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.6836071942446049},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.7050848920863304}},"SCISSORS_vs_PAPER":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.4260805369127517,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.33586577181207933,"avgHpBWin":0}},"PAPER_vs_SCISSORS":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.3368255033557035},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.4248590604026844}},"PAPER_vs_ROCK":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.25653074978938495,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.21752485256950313,"avgHpBWin":0}},"ROCK_vs_PAPER":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.2162973883740527},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.2553706823925864}},"SCISSORS_vs_SCISSORS":{"first":{"winRateA":69.3,"winRateB":30.7,"avgHpAWin":0.032675750796556255,"avgHpBWin":0.01944195468887773},"second":{"winRateA":27,"winRateB":73,"avgHpAWin":0.018642803877703208,"avgHpBWin":0.031131439428764156}},"ROCK_vs_ROCK":{"first":{"winRateA":71.8,"winRateB":28.199999999999996,"avgHpAWin":0.03184584074253002,"avgHpBWin":0.019415220747952128},"second":{"winRateA":26,"winRateB":74,"avgHpAWin":0.016984814078909997,"avgHpBWin":0.03108482098334502}},"PAPER_vs_PAPER":{"first":{"winRateA":75.1,"winRateB":24.9,"avgHpAWin":0.09195180689127,"avgHpBWin":0.052018571463103035},"second":{"winRateA":26.200000000000003,"winRateB":73.8,"avgHpAWin":0.055679732301932815,"avgHpBWin":0.09462037816723941}}},"40":{"ROCK_vs_SCISSORS":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.7073754646840116,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.6875631970260239,"avgHpBWin":0}},"SCISSORS_vs_ROCK":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.6871945477075599},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.7072527881040869}},"SCISSORS_vs_PAPER":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.45000000000000506,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.35662406015037906,"avgHpBWin":0}},"PAPER_vs_SCISSORS":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.3554661654135371},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.44619548872180964}},"PAPER_vs_ROCK":{"first":{"winRateA":100,"winRateB":0,"avgHpAWin":0.2461196340605209,"avgHpBWin":0},"second":{"winRateA":100,"winRateB":0,"avgHpAWin":0.2110147783251226,"avgHpBWin":0}},"ROCK_vs_PAPER":{"first":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.21053342716396878},"second":{"winRateA":0,"winRateB":100,"avgHpAWin":0,"avgHpBWin":0.2474370161857847}},"SCISSORS_vs_SCISSORS":{"first":{"winRateA":66.9,"winRateB":33.1,"avgHpAWin":0.031118997044180006,"avgHpBWin":0.02056595416032531},"second":{"winRateA":30.8,"winRateB":69.19999999999999,"avgHpAWin":0.018931256713211633,"avgHpBWin":0.0313342061801904}},"ROCK_vs_ROCK":{"first":{"winRateA":69,"winRateB":31,"avgHpAWin":0.03557108617252418,"avgHpBWin":0.021757989729271586},"second":{"winRateA":33.7,"winRateB":66.3,"avgHpAWin":0.02224372703965805,"avgHpBWin":0.035617457064861316}},"PAPER_vs_PAPER":{"first":{"winRateA":71.2,"winRateB":28.799999999999997,"avgHpAWin":0.08602278004752927,"avgHpBWin":0.05158900199839662},"second":{"winRateA":30.599999999999998,"winRateB":69.39999999999999,"avgHpAWin":0.05158960755020151,"avgHpBWin":0.08306865445965943}}}},"summary":{"turnOk":25,"turnTotal":27,"winOk":54,"winTotal":54,"hpOk":26,"hpTotal":54,"N":1000},"turnSummary":{"1":{"SCISSORS":7.829000000000001,"ROCK":9.333333333333334,"PAPER":9.003333333333332},"5":{"SCISSORS":8.482999999999999,"ROCK":11.009,"PAPER":9.029},"10":{"SCISSORS":10.008333333333333,"ROCK":13.008666666666665,"PAPER":10.042333333333334},"15":{"SCISSORS":11.006,"ROCK":14.341,"PAPER":11.714333333333334},"20":{"SCISSORS":12.349666666666666,"ROCK":15.382666666666665,"PAPER":13.229333333333335},"25":{"SCISSORS":13.601666666666667,"ROCK":16.673666666666666,"PAPER":14.197333333333333},"30":{"SCISSORS":14.424999999999999,"ROCK":17.568,"PAPER":15.575666666666665},"35":{"SCISSORS":15.341,"ROCK":18.764,"PAPER":16.666666666666668},"40":{"SCISSORS":16.117333333333335,"ROCK":20.020666666666667,"PAPER":17.974333333333334}},"TURN_TARGET":{"SCISSORS":{"1":7.5,"5":8.7,"10":10,"15":11.2,"20":12.5,"25":13.7,"30":14.5,"35":15.3,"40":16},"ROCK":{"1":9,"5":10.5,"10":12,"15":13.5,"20":15,"25":16.5,"30":17.5,"35":18.7,"40":20},"PAPER":{"1":8,"5":9.3,"10":10.6,"15":11.9,"20":13.1,"25":14.4,"30":15.6,"35":16.8,"40":18}}};
+
+// ============ SUMMARY ============
+const sum = DATA.summary;
+function paintSum(id, ok, total) {
+    const pct = ok / total * 100;
+    const cls = pct >= 95 ? 'ok' : pct >= 85 ? 'warn' : 'bad';
+    document.getElementById(id).className = 'value ' + cls;
+    document.getElementById(id).textContent = ok + ' / ' + total;
+}
+paintSum('sum-turn', sum.turnOk, sum.turnTotal);
+paintSum('sum-win', sum.winOk, sum.winTotal);
+paintSum('sum-hp', sum.hpOk, sum.hpTotal);
+document.getElementById('sum-n').textContent = sum.N;
+
+// ============ ② BASE STATS ============
+(function(){
+    const tbody = document.getElementById('tbody-base');
+    const rows = [];
+    for (let i = 0; i < DATA.levels.length; i++) {
+        const lv = DATA.levels[i];
+        const s = DATA.baseStats.SCISSORS[i];
+        const r = DATA.baseStats.ROCK[i];
+        const p = DATA.baseStats.PAPER[i];
+        rows.push(`<tr>
+            <td><strong>${lv}</strong></td>
+            <td class="s">${num0(s.hp)}</td><td class="s">${num1(s.atk)}</td>
+            <td class="s">${num1(s.def)}</td><td class="s">${num1(s.luck)}</td>
+            <td class="s">${pct1(s.dmgRed)}</td><td class="s">${pct1(s.passiveChance)}</td>
+            <td class="r">${num0(r.hp)}</td><td class="r">${num1(r.atk)}</td>
+            <td class="r">${num1(r.def)}</td><td class="r">${num1(r.luck)}</td>
+            <td class="r">${pct1(r.dmgRed)}</td><td class="r">${pct1(r.passiveChance)}</td>
+            <td class="p">${num0(p.hp)}</td><td class="p">${num1(p.atk)}</td>
+            <td class="p">${num1(p.def)}</td><td class="p">${num1(p.luck)}</td>
+            <td class="p">${pct1(p.dmgRed)}</td><td class="p">${pct1(p.passiveChance)}</td>
+        </tr>`);
+    }
+    tbody.innerHTML = rows.join('');
+})();
+
+// ============ ③ COUNTER BONUS 3 BẢNG (2 cột: lv hiện tại + lv đối diện) ============
+function buildCounterTable(tbodyId, data, valFn1, valFn2, fmt1, fmt2) {
+    const tbody = document.getElementById(tbodyId);
+    const rows = [];
+    // 40 levels, 2 cặp: (1,21), (2,22), ..., (20,40)
+    for (let i = 0; i < 20; i++) {
+        const a = data[i], b = data[i + 20];
+        rows.push(`<tr>
+            <td><strong>${a.lv}</strong></td>
+            <td class="c">${fmt1(valFn1(a))}</td>
+            <td class="c">${fmt2(valFn2(a))}</td>
+            <td><strong>${b.lv}</strong></td>
+            <td class="c">${fmt1(valFn1(b))}</td>
+            <td class="c">${fmt2(valFn2(b))}</td>
+        </tr>`);
+    }
+    tbody.innerHTML = rows.join('');
+}
+buildCounterTable('tbody-counter-rock',
+    DATA.counterBonus['Búa vs Kéo'],
+    d => d.rock_vs_scissors_def, d => d.rock_vs_scissors_hp,
+    v => num1(v), v => num0(v));
+buildCounterTable('tbody-counter-scissors',
+    DATA.counterBonus['Kéo vs Bao'],
+    d => d.scissors_vs_paper_dmg, d => d.scissors_vs_paper_luck,
+    v => pct1(v), v => num1(v));
+buildCounterTable('tbody-counter-paper',
+    DATA.counterBonus['Bao vs Búa'],
+    d => d.paper_vs_rock_hp, d => d.paper_vs_rock_luck,
+    v => num0(v), v => num1(v));
+
+// ============ ④ MIRROR ============
+(function(){
+    const tbody = document.getElementById('tbody-mirror');
+    const rows = [];
+    for (let i = 0; i < 20; i++) {
+        const a1 = DATA.mirrorDebuff.SCISSORS[i];
+        const a2 = DATA.mirrorDebuff.ROCK[i];
+        const a3 = DATA.mirrorDebuff.PAPER[i];
+        const b1 = DATA.mirrorDebuff.SCISSORS[i + 20];
+        const b2 = DATA.mirrorDebuff.ROCK[i + 20];
+        const b3 = DATA.mirrorDebuff.PAPER[i + 20];
+        rows.push(`<tr>
+            <td><strong>${a1.lv}</strong></td>
+            <td class="m">${num3(a1.mult)}</td>
+            <td class="m">${num3(a2.mult)}</td>
+            <td class="m">${num3(a3.mult)}</td>
+            <td><strong>${b1.lv}</strong></td>
+            <td class="m">${num3(b1.mult)}</td>
+            <td class="m">${num3(b2.mult)}</td>
+            <td class="m">${num3(b3.mult)}</td>
+        </tr>`);
+    }
+    tbody.innerHTML = rows.join('');
+})();
+
+// ============ ⑤ TURN COUNT ============
+(function(){
+    const tbody = document.getElementById('tbody-turn');
+    const els = [
+        { key: 'SCISSORS', label: '✂️ Kéo', cls: 's' },
+        { key: 'ROCK',     label: '🔨 Búa', cls: 'r' },
+        { key: 'PAPER',    label: '📄 Bao', cls: 'p' }
+    ];
+    const lvList = [1, 5, 10, 15, 20, 25, 30, 35, 40];
+    const rows = els.map(el => {
+        const cells = lvList.map(lv => {
+            const cur = DATA.turnSummary[lv][el.key];
+            const tgt = DATA.TURN_TARGET[el.key][lv];
+            const p = (cur - tgt) / tgt * 100;
+            const tol = lv < 10 ? 12 : 8;
+            const ok = Math.abs(p) <= tol;
+            return `<td class="${el.cls}">${num1(cur)}<br><span style="font-size:10px;color:var(--muted);">/${num1(tgt)}</span></td>`;
+        });
+        return `<tr><td class="${el.cls}"><strong>${el.label}</strong></td>${cells.join('')}</tr>`;
+    });
+    tbody.innerHTML = rows.join('');
+})();
+
+// ============ ⑥ WINRATE ============
+(function(){
+    const tbody = document.getElementById('tbody-win');
+    const lvList = [1, 5, 10, 15, 20, 25, 30, 35, 40];
+    const rows = [];
+    const matchups = [
+        { key: 'ROCK_vs_SCISSORS',     name: 'Búa vs Kéo (counter)', cls: 'c' },
+        { key: 'SCISSORS_vs_ROCK',     name: 'Kéo vs Búa (rev)',     cls: 'm' },
+        { key: 'SCISSORS_vs_PAPER',    name: 'Kéo vs Bao (counter)', cls: 'c' },
+        { key: 'PAPER_vs_SCISSORS',    name: 'Bao vs Kéo (rev)',     cls: 'm' },
+        { key: 'PAPER_vs_ROCK',        name: 'Bao vs Búa (counter)', cls: 'c' },
+        { key: 'ROCK_vs_PAPER',        name: 'Búa vs Bao (rev)',     cls: 'm' },
+        { key: 'SCISSORS_vs_SCISSORS', name: 'Kéo vs Kéo (mirror)',  cls: 'm' },
+        { key: 'ROCK_vs_ROCK',         name: 'Búa vs Búa (mirror)',  cls: 'm' },
+        { key: 'PAPER_vs_PAPER',       name: 'Bao vs Bao (mirror)',  cls: 'm' }
+    ];
+    for (const m of matchups) {
+        const cells = lvList.map(lv => {
+            const r = DATA.sim[lv][m.key];
+            // first = side A đi trước. For display: show winrate of side đầu (key[0])
+            const wr = r.first.winRateA;
+            return `<td class="${m.cls}">${num1(wr)}%</td>`;
+        });
+        rows.push(`<tr><td class="${m.cls}">${m.name}</td>${cells.join('')}</tr>`);
+    }
+    tbody.innerHTML = rows.join('');
+})();
+
+// ============ ⑦ HP REMAINING ============
+(function(){
+    const tbody = document.getElementById('tbody-hp');
+    const lvList = [1, 5, 10, 15, 20, 25, 30, 35, 40];
+    const rows = [];
+    const counterNames = [
+        { name: 'Búa vs Kéo', first: 'ROCK_vs_SCISSORS',     second: 'SCISSORS_vs_ROCK' },
+        { name: 'Kéo vs Bao', first: 'SCISSORS_vs_PAPER',    second: 'PAPER_vs_SCISSORS' },
+        { name: 'Bao vs Búa', first: 'PAPER_vs_ROCK',        second: 'ROCK_vs_PAPER' }
+    ];
+    for (const cm of counterNames) {
+        // First: counter đi trước (bên khắc chế thắng = winRateA side)
+        const cells1 = lvList.map(lv => {
+            const r = DATA.sim[lv][cm.first].first;
+            const hp = r.avgHpAWin * 100;
+            const cls = (hp >= 10 && hp <= 35) ? 'cell-ok' : (hp < 10 ? 'cell-bad' : 'cell-warn');
+            return `<td class="${cls}">${pct0(hp)}</td>`;
+        });
+        rows.push(`<tr><td class="c">${cm.name} (counter đi trước)</td>${cells1.join('')}</tr>`);
+        // Second: counter đi sau (bên khắc chế thắng = winRateB side)
+        const cells2 = lvList.map(lv => {
+            const r = DATA.sim[lv][cm.second].second;
+            const hp = r.avgHpBWin * 100;
+            const cls = (hp >= 10 && hp <= 35) ? 'cell-ok' : (hp < 10 ? 'cell-bad' : 'cell-warn');
+            return `<td class="${cls}">${pct0(hp)}</td>`;
+        });
+        rows.push(`<tr><td class="c">${cm.name} (counter đi sau)</td>${cells2.join('')}</tr>`);
+    }
+    tbody.innerHTML = rows.join('');
+})();
+
+// ============ ⑧ CHART ============
+const COLORS = { s: '#ff5e7a', r: '#6aa7ff', p: '#58e58a', c1: '#ff5e7a', c2: '#6aa7ff', c3: '#58e58a', warn: '#ff6b35' };
+
+function drawChart(canvasId, datasets) {
+    const c = document.getElementById(canvasId);
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = c.getBoundingClientRect();
+    c.width = rect.width * dpr;
+    c.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+    const W = rect.width, H = rect.height;
+    ctx.clearRect(0, 0, W, H);
+
+    const padL = 50, padR = 12, padT = 12, padB = 30;
+    const innerW = W - padL - padR;
+    const innerH = H - padT - padB;
+
+    let yMin = Infinity, yMax = -Infinity;
+    for (const ds of datasets) {
+        for (const v of ds.values) {
+            if (v < yMin) yMin = v;
+            if (v > yMax) yMax = v;
+        }
+    }
+    if (yMin === yMax) { yMin -= 1; yMax += 1; }
+    const yRange = yMax - yMin;
+    yMin -= yRange * 0.08;
+    yMax += yRange * 0.08;
+
+    const xAt = (lv) => padL + ((lv - 1) / 39) * innerW;
+    const yAt = (v) => padT + (1 - (v - yMin) / (yMax - yMin)) * innerH;
+
+    ctx.strokeStyle = '#2a3142';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#8a93a6';
+    ctx.font = '10px Consolas, monospace';
+    ctx.textAlign = 'right';
+    const ySteps = 5;
+    for (let i = 0; i <= ySteps; i++) {
+        const v = yMin + (yMax - yMin) * (i / ySteps);
+        const y = yAt(v);
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(W - padR, y);
+        ctx.stroke();
+        ctx.fillText(num1(v), padL - 4, y + 3);
+    }
+    ctx.textAlign = 'center';
+    const xMarks = [1, 5, 10, 15, 20, 25, 30, 35, 40];
+    for (const lv of xMarks) {
+        const x = xAt(lv);
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, padT + innerH);
+        ctx.stroke();
+        ctx.fillStyle = '#8a93a6';
+        ctx.fillText('Lv.' + lv, x, H - 10);
+    }
+    for (const ds of datasets) {
+        ctx.strokeStyle = ds.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < ds.values.length; i++) {
+            const x = xAt(i + 1);
+            const y = yAt(ds.values[i]);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+    }
+}
+
+function renderChart(type) {
+    let datasets = [], legend = [];
+    if (type === 'counter') {
+        const rk = DATA.counterBonus['Búa vs Kéo'];
+        const sk = DATA.counterBonus['Kéo vs Bao'];
+        const pk = DATA.counterBonus['Bao vs Búa'];
+        datasets = [
+            { color: COLORS.c1, values: rk.map(d => d.rock_vs_scissors_def) },
+            { color: COLORS.c2, values: rk.map(d => d.rock_vs_scissors_hp / 10) },
+            { color: COLORS.c3, values: sk.map(d => d.scissors_vs_paper_dmg * 100) },
+            { color: COLORS.warn, values: sk.map(d => d.scissors_vs_paper_luck) },
+            { color: COLORS.s, values: pk.map(d => d.paper_vs_rock_hp / 10) },
+            { color: COLORS.r, values: pk.map(d => d.paper_vs_rock_luck) }
+        ];
+        legend = [
+            ['#ff5e7a', 'Búa vs Kéo: +def'],
+            ['#6aa7ff', 'Búa vs Kéo: +HP / 10'],
+            ['#58e58a', 'Kéo vs Bao: +dmg%'],
+            ['#ff6b35', 'Kéo vs Bao: +luck'],
+            ['#ff5e7a', 'Bao vs Búa: +HP / 10'],
+            ['#6aa7ff', 'Bao vs Búa: +luck']
+        ];
+    } else if (type === 'mirror') {
+        datasets = [
+            { color: COLORS.s, values: DATA.mirrorDebuff.SCISSORS.map(d => d.mult) },
+            { color: COLORS.r, values: DATA.mirrorDebuff.ROCK.map(d => d.mult) },
+            { color: COLORS.p, values: DATA.mirrorDebuff.PAPER.map(d => d.mult) }
+        ];
+        legend = [
+            ['#ff5e7a', 'Kéo dmg_mult'],
+            ['#6aa7ff', 'Búa def_mult'],
+            ['#58e58a', 'Bao all_mult']
+        ];
+    } else {
+        datasets = [
+            { color: COLORS.s, values: DATA.baseStats.SCISSORS.map(d => d.hp) },
+            { color: COLORS.r, values: DATA.baseStats.ROCK.map(d => d.hp) },
+            { color: COLORS.p, values: DATA.baseStats.PAPER.map(d => d.hp) }
+        ];
+        legend = [
+            ['#ff5e7a', 'Kéo HP'],
+            ['#6aa7ff', 'Búa HP'],
+            ['#58e58a', 'Bao HP']
+        ];
+    }
+    drawChart('chart', datasets);
+    document.getElementById('chart-legend').innerHTML = legend.map(([c, l]) =>
+        `<span><span class="dot" style="background:${c}"></span> ${l}</span>`
+    ).join('');
+}
+
+document.getElementById('chart-type').addEventListener('change', (e) => {
+    renderChart(e.target.value);
+});
+window.addEventListener('resize', () => {
+    renderChart(document.getElementById('chart-type').value);
+});
+renderChart('counter');
+</script>
+</body>
+</html>
