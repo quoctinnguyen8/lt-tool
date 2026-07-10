@@ -14,6 +14,11 @@ Dự án được cấu trúc theo dạng module độc lập (flat modular styl
 E:/LingThu/lt-tool/
 ├── README.md               # Tài liệu hướng dẫn dự án
 ├── index.html              # Trang chủ / Bảng điều khiển chọn công cụ
+├── combat_simulator_v8/   # [Tool 3] Giả lập & Cân bằng Chiến đấu v8.3
+│   ├── simulator_v8_1.js   # Core engine mô phỏng
+│   ├── report_html_v8_3.js # Script tạo báo cáo HTML
+│   ├── report_v8_3.html    # Báo cáo kết quả (turn count, winrate, HP remaining)
+│   └── v8_3_report.txt     # Báo cáo dạng text
 ├── cover-color.html        # [Tool 1] Công cụ Đổi màu Sprite / Icon
 ├── resize-frame.html       # [Tool 2] Công cụ Thay đổi Khung hình Sprite
 ├── css/
@@ -47,3 +52,13 @@ Công cụ chuyên dụng giúp mở rộng ranh giới khung hình (canvas padd
 * **Trình xem thử hoạt ảnh loop (Animation Preview)**: Xem thử chuyển động lập tức với thanh trượt điều chỉnh tốc độ (FPS), giúp kiểm tra độ đồng đều của các frame sau co giãn.
 * **Lưới hướng dẫn (Grid Helper)**: Hiển thị các vạch nét đứt ngăn cách frame tĩnh để dễ canh lề.
 * **Batch Processing**: Co giãn đồng loạt hàng loạt sprite sheet chỉ với một click.
+
+### 3. Combat Simulator v8.3 (Giả lập & Cân bằng Chiến đấu)
+Công cụ mô phỏng đối kháng giữa 3 hệ Kéo-Búa-Bao, thiết kế cho game chiến đấu theo lượt Ling Thú.
+
+* **Vòng khắc chế truyền thống**: Búa > Kéo > Bao > Búa
+* **40 level** với nội suy đầy đủ chỉ số (HP, ATK, DEF, LUCK) và nội tại riêng từng hệ
+* **Báo cáo chi tiết**: turn count theo level + win rate + HP remaining (N=2000)
+* **3 kèo chính**: Kéo vs Búa, Búa vs Bao, Bao vs Kéo + kèo mirror (cùng hệ)
+* **Công thức sát thương**: Giáp (1-0.98^(def^0.8)), Crit, Hồi máu, Giảm sát thương
+* **Cơ chế khắc chế**: +DEF/+HP (Búa vs Kéo), +DMG%/+LUCK (Kéo vs Bao), +HP/+LUCK (Bao vs Búa)

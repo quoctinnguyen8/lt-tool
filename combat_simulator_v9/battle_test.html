@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Combat Simulator v9 — Battle Test</title>
+<style>
+:root {
+    --bg: #0f1218; --panel: #1a1f2b; --border: #2a3142;
+    --text: #e6e8ee; --muted: #8a93a6; --accent: #ffcf3f;
+    --s: #ff5e7a; --r: #6aa7ff; --p: #58e58a;
+    --ok: #4ade80; --warn: #ff6b35; --bad: #ef4444;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.5; min-height: 100vh; }
+header { background: linear-gradient(135deg, #1a1f2b 0%, #0f1218 100%);
+    border-bottom: 2px solid var(--accent); padding: 20px 28px; }
+header h1 { font-size: 22px; } header h1 span { color: var(--accent); }
+header p { color: var(--muted); font-size: 12px; margin-top: 4px; }
+main { max-width: 1000px; margin: 0 auto; padding: 20px 28px 40px; }
+.section { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 18px 22px; margin-bottom: 16px; }
+.section h2 { color: var(--accent); font-size: 14px; text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 14px; }
+.row { display: flex; gap: 20px; flex-wrap: wrap; }
+.col { flex: 1; min-width: 240px; }
+label { display: block; font-size: 11px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+select, input { width: 100%; background: #0f1218; color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 8px 10px; font-size: 13px; font-family: inherit; }
+select:focus, input:focus { outline: none; border-color: var(--accent); }
+.btn { display: inline-block; background: var(--accent); color: #0f1218;
+    border: none; border-radius: 4px; padding: 10px 28px;
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    letter-spacing: 1px; margin-top: 12px; }
+.btn:hover { opacity: 0.9; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.stat-preview { background: #0f1218; border: 1px solid var(--border);
+    border-radius: 4px; padding: 10px 14px; margin-top: 8px; font-size: 12px; }
+.stat-preview .row { display: flex; gap: 12px; }
+.stat-preview .item { min-width: 60px; }
+.stat-preview .item .val { font-size: 16px; font-weight: 700; }
+.stat-preview .item .val.s { color: var(--s); }
+.stat-preview .item .val.r { color: var(--r); }
+.stat-preview .item .val.p { color: var(--p); }
+.result-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.result-card { background: #0f1218; border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px 16px; text-align: center; }
+.result-card .label { font-size: 10px; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1px; }
+.result-card .value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+.result-card .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: 700; margin-left: 6px; }
+.badge.s { background: rgba(255,94,122,0.2); color: var(--s); }
+.badge.r { background: rgba(106,167,255,0.2); color: var(--r); }
+.badge.p { background: rgba(88,229,138,0.2); color: var(--p); }
+.detail-table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; }
+.detail-table th, .detail-table td { padding: 4px 8px; text-align: center;
+    border-bottom: 1px solid var(--border); }
+.detail-table th { background: #0f1218; color: var(--muted);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+#progress { color: var(--muted); font-size: 11px; margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+    <h1>⚔️ Combat Simulator <span>v9</span> — Battle Test</h1>
+    <p>Mô phỏng trận đấu ngẫu nhiên với tham số tùy chỉnh</p>
+</header>
+
+<main>
+
+<!-- ── CONFIG ── -->
+<section class="section">
+    <h2>① Cấu hình trận đấu</h2>
+    <div class="row">
+        <div class="col">
+            <label>Pet A <span class="badge s">🐾</span></label>
+            <select id="pet-a-el">
+                <option value="SCISSORS">✂️ Hệ Kéo</option>
+                <option value="ROCK">🔨 Hệ Búa</option>
+                <option value="PAPER" selected>📄 Hệ Bao</option>
+            </select>
+        </div>
+        <div class="col">
+            <label>Pet B <span class="badge r">🐾</span></label>
+            <select id="pet-b-el">
+                <option value="SCISSORS">✂️ Hệ Kéo</option>
+                <option value="ROCK" selected>🔨 Hệ Búa</option>
+                <option value="PAPER">📄 Hệ Bao</option>
+            </select>
+        </div>
+    </div>
+    <div class="row" style="margin-top:12px;">
+        <div class="col">
+            <label>Level Pet A</label>
+            <input type="number" id="pet-a-lv" value="40" min="1" max="40" step="1">
+        </div>
+        <div class="col">
+            <label>Level Pet B</label>
+            <input type="number" id="pet-b-lv" value="40" min="1" max="40" step="1">
+        </div>
+    </div>
+    <div class="row" style="margin-top:12px;">
+        <div class="col">
+            <label>Build Pet A (cách tăng chỉ số)</label>
+            <select id="pet-a-build">
+                <option value="balanced" selected>Cân bằng (25% mỗi stat)</option>
+                <option value="skewed_atk">Thiên về ATK (80% ATK)</option>
+                <option value="skewed_def">Thiên về DEF (80% DEF)</option>
+                <option value="skewed_hp">Thiên về HP (80% HP)</option>
+                <option value="skewed_luck">Thiên về LUCK (80% LUCK)</option>
+            </select>
+        </div>
+        <div class="col">
+            <label>Build Pet B (cách tăng chỉ số)</label>
+            <select id="pet-b-build">
+                <option value="balanced" selected>Cân bằng (25% mỗi stat)</option>
+                <option value="skewed_atk">Thiên về ATK (80% ATK)</option>
+                <option value="skewed_def">Thiên về DEF (80% DEF)</option>
+                <option value="skewed_hp">Thiên về HP (80% HP)</option>
+                <option value="skewed_luck">Thiên về LUCK (80% LUCK)</option>
+            </select>
+        </div>
+    </div>
+    <div class="row" style="margin-top:12px;">
+        <div class="col">
+            <label>Số trận giả lập (N)</label>
+            <input type="number" id="sim-n" value="500" min="10" max="10000" step="10">
+        </div>
+        <div class="col" style="display:flex;align-items:flex-end;">
+            <button class="btn" id="btn-run" onclick="runTest()">▶ Chạy mô phỏng</button>
+        </div>
+    </div>
+    <div id="progress"></div>
+</section>
+
+<!-- ── STAT PREVIEW ── -->
+<section class="section">
+    <h2>② Chỉ số pet</h2>
+    <div class="row">
+        <div class="col">
+            <div class="stat-preview" id="stat-a"></div>
+        </div>
+        <div class="col">
+            <div class="stat-preview" id="stat-b"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ── RESULTS ── -->
+<section class="section" id="sec-res" style="display:none;">
+    <h2>③ Kết quả mô phỏng</h2>
+    <div class="result-grid" id="result-grid"></div>
+    <div id="detail-table"></div>
+</section>
+
+</main>
+
+<script>
+// ════════════════════════════════════════════
+//  EMBEDDED ENGINE (từ simulator_v9.js)
+// ════════════════════════════════════════════
+
+function getDamageReduction(def) {
+    if (def <= 0) return 0;
+    const r = 1 - Math.pow(0.98, Math.pow(def, 0.8));
+    return Math.max(0, Math.min(0.95, r));
+}
+function getPassiveChance(luck) {
+    if (luck <= 0) return 0;
+    const p = 1 - Math.pow(0.99, Math.pow(luck, 0.75));
+    return Math.max(0, Math.min(0.5, p));
+}
+function rawDamage(atk, def) { return atk * (1 - getDamageReduction(def)); }
+function toIntDamage(d) { return Math.max(0, Math.floor(d)); }
+function freePoints(level) { return Math.max(0, level - 1); }
+
+const POINT_RATIO = { hp: 10, atk: 1, def: 1, luck: 1 };
+const BUILD_DIST = {
+    none:         { hp: 0,     atk: 0,     def: 0,     luck: 0     },
+    balanced:     { hp: 0.25,  atk: 0.25,  def: 0.25,  luck: 0.25  },
+    skewed_hp:    { hp: 0.80,  atk: 0.067, def: 0.067, luck: 0.067 },
+    skewed_atk:   { hp: 0.067, atk: 0.80,  def: 0.067, luck: 0.067 },
+    skewed_def:   { hp: 0.067, atk: 0.067, def: 0.80,  luck: 0.067 },
+    skewed_luck:  { hp: 0.067, atk: 0.067, def: 0.067, luck: 0.80  }
+};
+
+const PRESET = {
+    SCISSORS: {
+        name: 'Hệ Kéo',
+        base:   { hp: 100, atk: 16, def: 2,  luck: 7 },
+        growth: { hp: [16,26,22,34], atk: [1.6,3.0,3.4,4.0],
+                  def: [0.10,0.30,0.35,0.45], luck: [0.6,0.7,0.8,1.0] }
+    },
+    ROCK: {
+        name: 'Hệ Búa',
+        base:   { hp: 110, atk: 13, def: 6,  luck: 5 },
+        growth: { hp: [16,28,34,42], atk: [1.0,1.6,2.0,2.4],
+                  def: [0.7,0.9,1.1,1.3], luck: [0.3,0.4,0.4,0.5] }
+    },
+    PAPER: {
+        name: 'Hệ Bao',
+        base:   { hp: 85, atk: 14, def: 4,  luck: 5 },
+        growth: { hp: [12,24,30,36], atk: [1.6,2.2,2.6,2.8],
+                  def: [0.4,0.6,0.7,0.9], luck: [0.3,0.4,0.5,0.6] }
+    }
+};
+
+const COUNTER = {
+    rock_vs_scissors_def: {1:8,5:20,10:35,15:44,20:52,25:50,30:44,35:45,40:39},
+    rock_vs_scissors_hp:  {1:14,5:40,10:69,15:87,20:105,25:98,30:85,35:88,40:75},
+    scissors_vs_paper_dmg:{1:0.04,5:0.08,10:0.16,15:0.20,20:0.26,25:0.32,30:0.42,35:0.44,40:0.50},
+    scissors_vs_paper_luck:{1:1,5:3,10:10,15:9,20:12,25:15,30:27,35:21,40:24},
+    scissors_vs_paper_def_scale:{1:1.0,5:1.0,10:0.80,15:0.58,20:0.12,25:0.48,30:0.41,35:0.85,40:0.49},
+    paper_vs_rock_hp:     {1:70,5:73,10:112,15:194,20:280,25:346,30:403,35:480,40:540},
+    paper_vs_rock_luck:   {1:3,5:8,10:19,15:34,20:48,25:53,30:54,35:55,40:52},
+    paper_vs_rock_def_scale:{1:1.0,5:1.0,10:0.12,15:0.14,20:0.18,25:0.37,30:0.60,35:0.80,40:0.90},
+};
+
+const MIRROR = {
+    scissors_dmg_mult: {1:0.95,5:0.98,10:0.90,15:0.85,20:0.78,25:0.70,30:0.65,35:0.65,40:0.63},
+    rock_def_mult:     {1:0.01,5:0.23,10:0.38,15:0.01,20:0.08,25:0.25,30:0.24,35:0.29,40:0.33},
+    paper_all_mult:    {1:0.09,5:3.76,10:3.50,15:2.09,20:1.68,25:1.59,30:1.53,35:1.39,40:1.26},
+};
+
+const PASSIVE_LUT = {
+    scissorsCritLow:  {1:1.10,5:1.12,10:1.14,15:1.17,20:1.20,25:1.22,30:1.24,35:1.245,40:1.25},
+    scissorsCritHigh: {1:1.20,5:1.25,10:1.30,15:1.35,20:1.40,25:1.43,30:1.46,35:1.48,40:1.50},
+    rockGuardBase:    {1:0.10,5:0.13,10:0.16,15:0.19,20:0.22,25:0.25,30:0.27,35:0.29,40:0.30},
+    rockGuardLowHp:   {1:0.20,5:0.27,10:0.34,15:0.40,20:0.46,25:0.50,30:0.54,35:0.57,40:0.60},
+    paperHealBase:    {1:0.20,5:0.23,10:0.26,15:0.29,20:0.32,25:0.35,30:0.37,35:0.39,40:0.40},
+    paperHealLowHp:   {1:0.40,5:0.48,10:0.56,15:0.62,20:0.68,25:0.72,30:0.75,35:0.78,40:0.80},
+};
+
+function lutAt(LUT, lv) {
+    const keys = Object.keys(LUT).map(Number).sort((a,b)=>a-b);
+    if (lv <= keys[0]) return LUT[keys[0]];
+    if (lv >= keys[keys.length-1]) return LUT[keys[keys.length-1]];
+    for (let i=0;i<keys.length-1;i++) {
+        const lo=keys[i], hi=keys[i+1];
+        if (lv>=lo&&lv<=hi) { const t=(lv-lo)/(hi-lo); return LUT[lo]+(LUT[hi]-LUT[lo])*t; }
+    }
+    return LUT[keys[keys.length-1]];
+}
+function mirrorAt(k,lv)  { return lutAt(MIRROR[k],lv); }
+function counterAt(k,lv) { return lutAt(COUNTER[k],lv); }
+
+function applyBuild(baseStats, buildId, fp) {
+    if (buildId==='none'||fp===0) return {...baseStats};
+    const dist=BUILD_DIST[buildId];
+    return {
+        element:baseStats.element, level:baseStats.level,
+        hp:  baseStats.hp  +Math.round(dist.hp  *fp*POINT_RATIO.hp),
+        atk: baseStats.atk +Math.round(dist.atk *fp*POINT_RATIO.atk),
+        def: baseStats.def +Math.round(dist.def *fp*POINT_RATIO.def),
+        luck:baseStats.luck+Math.round(dist.luck*fp*POINT_RATIO.luck),
+    };
+}
+function baseStatsAtLevel(element, lv) {
+    const p=PRESET[element], g=p.growth;
+    let hp=p.base.hp, atk=p.base.atk, def=p.base.def, luck=p.base.luck;
+    for (let l=2;l<=lv;l++) {
+        const idx=l<=10?0:l<=20?1:l<=30?2:3;
+        hp+=g.hp[idx]; atk+=g.atk[idx]; def+=g.def[idx]; luck+=g.luck[idx];
+    }
+    return {element, level:lv, hp, atk, def, luck};
+}
+function statsAtLevel(element, lv, build='none') {
+    return applyBuild(baseStatsAtLevel(element,lv), build, freePoints(lv));
+}
+
+function prepareFight(statsA, statsB) {
+    const A={...statsA, maxHp:statsA.hp}, B={...statsB, maxHp:statsB.hp};
+    A.dmgMult=1; B.dmgMult=1;
+    if (A.element==='ROCK'&&B.element==='SCISSORS') {
+        A.def+=counterAt('rock_vs_scissors_def',A.level);
+        A.maxHp+=counterAt('rock_vs_scissors_hp',A.level);
+        A.hp+=counterAt('rock_vs_scissors_hp',A.level);
+    } else if (B.element==='ROCK'&&A.element==='SCISSORS') {
+        B.def+=counterAt('rock_vs_scissors_def',B.level);
+        B.maxHp+=counterAt('rock_vs_scissors_hp',B.level);
+        B.hp+=counterAt('rock_vs_scissors_hp',B.level);
+    } else if (A.element==='SCISSORS'&&B.element==='PAPER') {
+        const ds=lutAt(COUNTER.scissors_vs_paper_def_scale,A.level)||1;
+        A.dmgMult*=(1+counterAt('scissors_vs_paper_dmg',A.level));
+        A.luck+=counterAt('scissors_vs_paper_luck',A.level);
+        A.def=Math.max(0,A.def*ds);
+    } else if (B.element==='SCISSORS'&&A.element==='PAPER') {
+        const ds=lutAt(COUNTER.scissors_vs_paper_def_scale,B.level)||1;
+        B.dmgMult*=(1+counterAt('scissors_vs_paper_dmg',B.level));
+        B.luck+=counterAt('scissors_vs_paper_luck',B.level);
+        B.def=Math.max(0,B.def*ds);
+    } else if (A.element==='PAPER'&&B.element==='ROCK') {
+        const ds=lutAt(COUNTER.paper_vs_rock_def_scale,A.level)||1;
+        const hpB=counterAt('paper_vs_rock_hp',A.level);
+        const lkB=counterAt('paper_vs_rock_luck',A.level);
+        A.maxHp+=hpB; A.hp+=hpB; A.luck+=lkB;
+        A.def=Math.max(0,A.def*ds);
+    } else if (B.element==='PAPER'&&A.element==='ROCK') {
+        const ds=lutAt(COUNTER.paper_vs_rock_def_scale,B.level)||1;
+        const hpB=counterAt('paper_vs_rock_hp',B.level);
+        const lkB=counterAt('paper_vs_rock_luck',B.level);
+        B.maxHp+=hpB; B.hp+=hpB; B.luck+=lkB;
+        B.def=Math.max(0,B.def*ds);
+    }
+    if (A.element===B.element) {
+        if (A.element==='SCISSORS') { const m=mirrorAt('scissors_dmg_mult',A.level); A.dmgMult*=m; B.dmgMult*=m; }
+        else if (A.element==='ROCK') { const m=mirrorAt('rock_def_mult',A.level); A.def*=m; B.def*=m; }
+        else if (A.element==='PAPER') {
+            const m=mirrorAt('paper_all_mult',A.level);
+            A.atk*=m; A.def*=m; A.luck*=m; A.maxHp*=m; A.hp*=m;
+            B.atk*=m; B.def*=m; B.luck*=m; B.maxHp*=m; B.hp*=m;
+        }
+    }
+    return {A,B};
+}
+
+function attackOnce(attacker, defender) {
+    let dmg=rawDamage(attacker.atk, defender.def);
+    if (attacker.element==='SCISSORS') {
+        const chance=getPassiveChance(attacker.luck);
+        if (Math.random()<chance) {
+            const isHigh=(attacker.hp/attacker.maxHp)>0.75;
+            const mult=isHigh?lutAt(PASSIVE_LUT.scissorsCritHigh,attacker.level)
+                            :lutAt(PASSIVE_LUT.scissorsCritLow,attacker.level);
+            dmg*=mult;
+        }
+    }
+    if (attacker.dmgMult&&attacker.dmgMult!==1) dmg*=attacker.dmgMult;
+    if (defender.element==='ROCK') {
+        const chance=getPassiveChance(defender.luck);
+        if (Math.random()<chance) {
+            const isLow=(defender.hp/defender.maxHp)<0.30;
+            const r=isLow?lutAt(PASSIVE_LUT.rockGuardLowHp,defender.level)
+                        :lutAt(PASSIVE_LUT.rockGuardBase,defender.level);
+            dmg*=(1-r);
+        }
+    }
+    const dealt=toIntDamage(dmg);
+    defender.hp=Math.max(0,defender.hp-dealt);
+    if (defender.element==='PAPER'&&defender.hp>0&&dealt>0) {
+        const chance=getPassiveChance(defender.luck);
+        if (Math.random()<chance) {
+            const isLow=(defender.hp/defender.maxHp)<0.25;
+            const rate=isLow?lutAt(PASSIVE_LUT.paperHealLowHp,defender.level)
+                           :lutAt(PASSIVE_LUT.paperHealBase,defender.level);
+            const heal=Math.max(1,Math.floor(dealt*rate));
+            defender.hp=Math.min(defender.maxHp,defender.hp+heal);
+        }
+    }
+    return {dmg:dealt};
+}
+
+function simulateBattle(statsA, statsB, goFirst) {
+    const maxTurns=80;
+    const first=goFirst==='B'?statsB:statsA, second=goFirst==='B'?statsA:statsB;
+    const prepared=prepareFight(first,second);
+    const A=prepared.A, B=prepared.B;
+    let turns=0;
+    while (turns<maxTurns&&A.hp>0&&B.hp>0) { turns++; attackOnce(A,B); if (B.hp<=0) break; attackOnce(B,A); }
+    let winnerLabel;
+    if (A.hp>0&&B.hp<=0) winnerLabel=(first===statsA)?'A':'B';
+    else if (B.hp>0&&A.hp<=0) winnerLabel=(first===statsA)?'B':'A';
+    else {
+        if (A.hp>B.hp) winnerLabel=(first===statsA)?'A':'B';
+        else if (B.hp>A.hp) winnerLabel=(first===statsA)?'B':'A';
+        else winnerLabel='DRAW';
+    }
+    const winnerObj=winnerLabel==='A'?A:B, loserObj=winnerLabel==='A'?B:A;
+    return {winner:winnerLabel, turns, winnerHpRatio:winnerObj.hp/winnerObj.maxHp};
+}
+
+// ════════════════════════════════════════════
+//  UI LOGIC
+// ════════════════════════════════════════════
+
+const EL_COLOR = {SCISSORS:'#ff5e7a',ROCK:'#6aa7ff',PAPER:'#58e58a'};
+const EL_LABEL = {SCISSORS:'✂️ Kéo',ROCK:'🔨 Búa',PAPER:'📄 Bao'};
+const BUILD_LABEL = {balanced:'Cân bằng',skewed_hp:'Thiên HP',skewed_atk:'Thiên ATK',skewed_def:'Thiên DEF',skewed_luck:'Thiên LUCK'};
+const n1=x=>Number(x).toFixed(1), n2=x=>Number(x).toFixed(2), pct=x=>Math.round(x*100);
+
+function updateStatPreviews() {
+    const aEl=document.getElementById('pet-a-el').value;
+    const bEl=document.getElementById('pet-b-el').value;
+    const aLv=parseInt(document.getElementById('pet-a-lv').value)||1;
+    const bLv=parseInt(document.getElementById('pet-b-lv').value)||1;
+    const aB=document.getElementById('pet-a-build').value;
+    const bB=document.getElementById('pet-b-build').value;
+
+    function render(id, el, lv, build) {
+        const s=statsAtLevel(el,lv,build);
+        const dr=getDamageReduction(s.def), pc=getPassiveChance(s.luck);
+        document.getElementById(id).innerHTML=`
+            <div><strong style="color:${EL_COLOR[el]}">${EL_LABEL[el]}</strong> Lv.${lv} — ${BUILD_LABEL[build]}</div>
+            <div class="row" style="margin-top:6px;">
+                <div class="item"><span style="color:var(--muted)">HP</span><br><span class="val" style="color:${EL_COLOR[el]}">${n1(s.hp)}</span></div>
+                <div class="item"><span style="color:var(--muted)">ATK</span><br><span class="val" style="color:${EL_COLOR[el]}">${n1(s.atk)}</span></div>
+                <div class="item"><span style="color:var(--muted)">DEF</span><br><span class="val" style="color:${EL_COLOR[el]}">${n1(s.def)}</span></div>
+                <div class="item"><span style="color:var(--muted)">LUCK</span><br><span class="val" style="color:${EL_COLOR[el]}">${n1(s.luck)}</span></div>
+                <div class="item"><span style="color:var(--muted)">DR%</span><br><span>${n1(dr*100)}%</span></div>
+                <div class="item"><span style="color:var(--muted)">Nội tại%</span><br><span>${n1(pc*100)}%</span></div>
+            </div>`;
+    }
+    render('stat-a', aEl, aLv, aB);
+    render('stat-b', bEl, bLv, bB);
+
+    // Update matchup badge
+    const a=e=>el=>document.getElementById(el).style.color=EL_COLOR[e];
+    a(aEl)('pet-a-el'); a(bEl)('pet-b-el');
+}
+
+// Attach listeners
+document.getElementById('pet-a-el').addEventListener('change',updateStatPreviews);
+document.getElementById('pet-b-el').addEventListener('change',updateStatPreviews);
+document.getElementById('pet-a-lv').addEventListener('input',updateStatPreviews);
+document.getElementById('pet-b-lv').addEventListener('input',updateStatPreviews);
+document.getElementById('pet-a-build').addEventListener('change',updateStatPreviews);
+document.getElementById('pet-b-build').addEventListener('change',updateStatPreviews);
+
+// Init
+updateStatPreviews();
+
+// ── RUN TEST ──
+function runTest() {
+    const aEl=document.getElementById('pet-a-el').value;
+    const bEl=document.getElementById('pet-b-el').value;
+    const aLv=Math.max(1,Math.min(40,parseInt(document.getElementById('pet-a-lv').value)||1));
+    const bLv=Math.max(1,Math.min(40,parseInt(document.getElementById('pet-b-lv').value)||1));
+    const aB=document.getElementById('pet-a-build').value;
+    const bB=document.getElementById('pet-b-build').value;
+    const n=Math.max(10,Math.min(10000,parseInt(document.getElementById('sim-n').value)||500));
+
+    document.getElementById('pet-a-lv').value=aLv;
+    document.getElementById('pet-b-lv').value=bLv;
+    document.getElementById('sim-n').value=n;
+
+    const btn=document.getElementById('btn-run');
+    btn.disabled=true; btn.textContent='⏳ Đang chạy...';
+    document.getElementById('progress').textContent='';
+
+    const sa=statsAtLevel(aEl,aLv,aB), sb=statsAtLevel(bEl,bLv,bB);
+    let winA=0, winB=0, draw=0, totalTurns=0;
+    let sumHpA=0, sumHpB=0;
+    let minT=Infinity, maxT=0;
+    const hpA=[], hpB=[], turnsList=[];
+
+    const updateInterval=Math.max(1,Math.floor(n/20));
+
+    function runBatch(start, batchSize) {
+        const end=Math.min(start+batchSize, n);
+        for (let i=start;i<end;i++) {
+            const gf=(i%2===0)?'A':'B';
+            const r=simulateBattle(sa, sb, gf);
+            totalTurns+=r.turns;
+            turnsList.push(r.turns);
+            if (r.turns<minT) minT=r.turns;
+            if (r.turns>maxT) maxT=r.turns;
+            if (r.winner==='A') { winA++; sumHpA+=r.winnerHpRatio; hpA.push(r.winnerHpRatio*100); }
+            else if (r.winner==='B') { winB++; sumHpB+=r.winnerHpRatio; hpB.push(r.winnerHpRatio*100); }
+            else { draw++; }
+        }
+        if (end<n) {
+            document.getElementById('progress').textContent=`Đã chạy ${end}/${n} trận...`;
+            setTimeout(()=>runBatch(end,batchSize),0);
+        } else {
+            displayResults();
+        }
+    }
+
+    function displayResults() {
+        btn.disabled=false; btn.textContent='▶ Chạy mô phỏng';
+        document.getElementById('progress').textContent=`Hoàn tất ${n} trận`;
+
+        const avgT=totalTurns/n;
+        const wrA=winA/n*100, wrB=winB/n*100, dr=draw/n*100;
+        const avgHpA=winA>0?sumHpA/winA*100:0, avgHpB=winB>0?sumHpB/winB*100:0;
+
+        // Percentiles for HP
+        function p(arr,pct){if(!arr.length)return 0;const s=[...arr].sort((a,b)=>a-b);return s[Math.floor(s.length*pct/100)]||0;}
+
+        // Determine counter advantage
+        let counterHint='';
+        if ((aEl==='ROCK'&&bEl==='SCISSORS')||(aEl==='SCISSORS'&&bEl==='PAPER')||(aEl==='PAPER'&&bEl==='ROCK'))
+            counterHint=`<span style="color:var(--ok);">${EL_LABEL[aEl]} khắc chế ${EL_LABEL[bEl]}</span>`;
+        else if ((bEl==='ROCK'&&aEl==='SCISSORS')||(bEl==='SCISSORS'&&aEl==='PAPER')||(bEl==='PAPER'&&aEl==='ROCK'))
+            counterHint=`<span style="color:var(--warn);">${EL_LABEL[bEl]} khắc chế ${EL_LABEL[aEl]}</span>`;
+        else if (aEl===bEl)
+            counterHint='<span style="color:#c084fc;">Mirror (cùng hệ)</span>';
+
+        document.getElementById('sec-res').style.display='block';
+        document.getElementById('result-grid').innerHTML=`
+            <div class="result-card">
+                <div class="label">${EL_LABEL[aEl]} thắng</div>
+                <div class="value" style="color:${EL_COLOR[aEl]}">${n1(wrA)}%</div>
+                <div class="sub">Winrate</div>
+            </div>
+            <div class="result-card">
+                <div class="label">${EL_LABEL[bEl]} thắng</div>
+                <div class="value" style="color:${EL_COLOR[bEl]}">${n1(wrB)}%</div>
+                <div class="sub">Winrate</div>
+            </div>
+            <div class="result-card">
+                <div class="label">Số lượt TB</div>
+                <div class="value">${n1(avgT)}</div>
+                <div class="sub">${minT}-${maxT} lượt</div>
+            </div>
+            <div class="result-card">
+                <div class="label">HP còn lại TB (bên thắng)</div>
+                <div class="value">${n1((avgHpA*wrA+avgHpB*wrB)/(wrA+wrB||1))}%</div>
+                <div class="sub">${counterHint||'Cặp trung tính'}</div>
+            </div>`;
+
+        document.getElementById('detail-table').innerHTML=`
+            <div style="margin-top:12px;color:var(--muted);font-size:11px;">Chi tiết phân phối</div>
+            <table class="detail-table">
+                <thead><tr>
+                    <th>Chỉ số</th><th>${EL_LABEL[aEl]} (Pet A)</th><th>${EL_LABEL[bEl]} (Pet B)</th>
+                </tr></thead>
+                <tbody>
+                    <tr><td>Tỉ lệ thắng</td><td style="color:${EL_COLOR[aEl]}">${n1(wrA)}%</td><td style="color:${EL_COLOR[bEl]}">${n1(wrB)}%</td></tr>
+                    <tr><td>HP TB khi thắng</td><td>${n1(avgHpA)}%</td><td>${n1(avgHpB)}%</td></tr>
+                    <tr><td>HP P25 (25% trận thắng ≤ mức này)</td><td>${n1(p(hpA,25))}%</td><td>${n1(p(hpB,25))}%</td></tr>
+                    <tr><td>HP P50 — trung vị (50% trận ≤ mức này)</td><td>${n1(p(hpA,50))}%</td><td>${n1(p(hpB,50))}%</td></tr>
+                    <tr><td>HP P75 (75% trận thắng ≤ mức này)</td><td>${n1(p(hpA,75))}%</td><td>${n1(p(hpB,75))}%</td></tr>
+                    <tr><td>HP Min</td><td>${n1(hpA.length?Math.min(...hpA):0)}%</td><td>${n1(hpB.length?Math.min(...hpB):0)}%</td></tr>
+                    <tr><td>HP Max</td><td>${n1(hpA.length?Math.max(...hpA):0)}%</td><td>${n1(hpB.length?Math.max(...hpB):0)}%</td></tr>
+                    <tr><td>Số lượt TB</td><td colspan="2" style="text-align:center;">${n1(avgT)} (min ${minT} / max ${maxT})</td></tr>
+                    <tr><td>Hòa</td><td colspan="2" style="text-align:center;">${dr.toFixed(2)}%</td></tr>
+                </tbody>
+            </table>`;
+    }
+
+    runBatch(0, updateInterval);
+}
+</script>
+</body>
+</html>
