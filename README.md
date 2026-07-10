@@ -14,11 +14,16 @@ Dự án được cấu trúc theo dạng module độc lập (flat modular styl
 E:/LingThu/lt-tool/
 ├── README.md               # Tài liệu hướng dẫn dự án
 ├── index.html              # Trang chủ / Bảng điều khiển chọn công cụ
-├── combat_simulator_v8/   # [Tool 3] Giả lập & Cân bằng Chiến đấu v8.3
+├── combat_simulator_v8/   # [Tool 3] Giả lập & Cân bằng Chiến đấu v8.3 (lưu trữ)
 │   ├── simulator_v8_1.js   # Core engine mô phỏng
 │   ├── report_html_v8_3.js # Script tạo báo cáo HTML
 │   ├── report_v8_3.html    # Báo cáo kết quả (turn count, winrate, HP remaining)
 │   └── v8_3_report.txt     # Báo cáo dạng text
+├── combat_simulator_v9/   # [Tool 4] Giả lập & Cân bằng Chiến đấu v9 (bản chính thức)
+│   ├── simulator_v9.js     # Core engine mô phỏng + hệ thống điểm cộng tự do
+│   ├── report_v9.js        # Script tạo báo cáo HTML v9
+│   ├── report_v9.html      # Báo cáo kết quả v9 (5 build types, counter re-tuned)
+│   └── battle_test.html    # Giao diện battle test v9
 ├── cover-color.html        # [Tool 1] Công cụ Đổi màu Sprite / Icon
 ├── resize-frame.html       # [Tool 2] Công cụ Thay đổi Khung hình Sprite
 ├── css/
@@ -53,7 +58,7 @@ Công cụ chuyên dụng giúp mở rộng ranh giới khung hình (canvas padd
 * **Lưới hướng dẫn (Grid Helper)**: Hiển thị các vạch nét đứt ngăn cách frame tĩnh để dễ canh lề.
 * **Batch Processing**: Co giãn đồng loạt hàng loạt sprite sheet chỉ với một click.
 
-### 3. Combat Simulator v8.3 (Giả lập & Cân bằng Chiến đấu)
+### 3. Combat Simulator v8.3 (Giả lập & Cân bằng Chiến đấu — lưu trữ)
 Công cụ mô phỏng đối kháng giữa 3 hệ Kéo-Búa-Bao, thiết kế cho game chiến đấu theo lượt Ling Thú.
 
 * **Vòng khắc chế truyền thống**: Búa > Kéo > Bao > Búa
@@ -62,3 +67,13 @@ Công cụ mô phỏng đối kháng giữa 3 hệ Kéo-Búa-Bao, thiết kế c
 * **3 kèo chính**: Kéo vs Búa, Búa vs Bao, Bao vs Kéo + kèo mirror (cùng hệ)
 * **Công thức sát thương**: Giáp (1-0.98^(def^0.8)), Crit, Hồi máu, Giảm sát thương
 * **Cơ chế khắc chế**: +DEF/+HP (Búa vs Kéo), +DMG%/+LUCK (Kéo vs Bao), +HP/+LUCK (Bao vs Búa)
+
+### 4. Combat Simulator v9 — Bản chính thức
+Fork từ v8.3, bổ sung hệ thống điểm cộng tự do và re-tune counter/mirror. **Đây là nguồn sự thật (source of truth) cho cấu hình chiến đấu trong AdminApp và GameServer.**
+
+* **Hệ thống điểm cộng tự do**: Mỗi level-up nhận 1 điểm tự do, phân phối vào HP/ATK/DEF/LUCK theo 5 build type (balanced, skewed_hp, skewed_atk, skewed_def, skewed_luck).
+* **Counter re-tuned**: Giảm mạnh buff cho Búa vs Kéo (HP Lv40: 320→75, DEF Lv40: 164→39); tăng mạnh buff cho Bao vs Búa (HP Lv40: 328→540, LUCK Lv40: 30→52).
+* **2 LUT mới**: `scissors_vs_paper_def_scale` và `paper_vs_rock_def_scale` — giảm DEF bên counter để nhận nhiều damage hơn, giảm overkill.
+* **Mirror re-tuned**: scissors_dmg_mult, rock_def_mult, paper_all_mult đều được tune lại cho target turn counts.
+* **Passive LUT**: Giữ nguyên v8.3 (không đổi).
+* **PRESET/Growth**: Giữ nguyên v8.3 (không đổi).
