@@ -8,11 +8,17 @@
 - Ưu tiên mục tiêu khi tuning: WR counter ≥95% > HP remaining 10-35% > số lượt đánh. Confidence: 0.85
 
 # combat-simulator
-- Hệ thống điểm cộng tự do: 1 điểm/level, HP×10, ATK/DEF/LUCK×1, cộng thêm vào growth system có sẵn (không thay thế). Confidence: 0.85
-- Build types: balanced (25% mỗi stat), skewed_HP/ATK/DEF/LUCK (80% vào 1 stat, ~6.67% các stat còn lại). Confidence: 0.85
-- Vòng khắc chế: Búa > Kéo > Bao > Búa (truyền thống). Confidence: 0.85
-- Cơ chế "We are family" (mirror) giữ nguyên: Kéo giảm dmg, Búa giảm def, Bao giảm toàn bộ chỉ số. Confidence: 0.85
-- Tuning COUNTER/MIRROR per-milestone (9 mốc: 1,5,10,15,20,25,30,35,40), nội suy tuyến tính cho 40 level. Confidence: 0.70
+See [combat-simulator/taste.md](combat-simulator/taste.md)
+# coding-style
+- Luôn dùng `'use strict';` ở đầu mọi file JavaScript. Confidence: 0.90
+- Dùng comment block `// ====` để phân chia section trong code. Confidence: 0.75
+
+# workflow
+- Trước khi viết phiên bản mới, đọc code phiên bản trước làm tham khảo. Confidence: 0.85
+- Phát triển theo chu kỳ: viết code → chạy thử → phát hiện bug → sửa → chạy lại (lặp đến khi đạt). Confidence: 0.85
+- Dùng `todo_write` để theo dõi tiến độ các bước trong dự án nhiều bước. Confidence: 0.75
+- Khi auto-tuning: dùng multi-round với best-score tracking để tránh local minima; mỗi round tune COUNTER trước rồi MIRROR sau. Confidence: 0.70
 
 # tooling
-- Ưu tiên công cụ dạng HTML (có thể mở trực tiếp trên browser) thay vì CLI script cho các công cụ kiểm tra/mô phỏng. Confidence: 0.65
+- Ưu tiên công cụ dạng HTML (có thể mở trực tiếp trên browser) thay vì CLI script cho các công cụ kiểm tra/mô phỏng. Confidence: 0.80
+- Thích báo cáo HTML tự chứa (self-contained), nhúng toàn bộ dữ liệu trực tiếp trong file để xem offline trên browser, không phụ thuộc server hay external file. Confidence: 0.75

@@ -1,0 +1,12 @@
+# combat-simulator
+- Hệ thống điểm cộng tự do: 1 điểm/level, HP×10, ATK/DEF/LUCK×1, cộng thêm vào growth system có sẵn (không thay thế). Confidence: 0.85
+- Build types: balanced (25% mỗi stat), skewed_HP/ATK/DEF/LUCK (80% vào 1 stat, ~6.67% các stat còn lại). Confidence: 0.85
+- Vòng khắc chế: Búa > Kéo > Bao > Búa (truyền thống). Confidence: 0.85
+- Cơ chế "We are family" (mirror) giữ nguyên: Kéo giảm dmg, Búa giảm def, Bao giảm toàn bộ chỉ số. Confidence: 0.85
+- Tuning COUNTER/MIRROR per-milestone (9 mốc: 1,5,10,15,20,25,30,35,40), nội suy tuyến tính cho 40 level. Confidence: 0.70
+- COUNTER LUT phải tăng đơn điệu theo level (monotonic increasing), MIRROR LUT được phép không đơn điệu. Confidence: 0.75
+- Ràng buộc "tối đa 2 chỉ số" (trong 4 chỉ số hp/atk/def/luck) chỉ áp dụng cho cơ chế khắc chế (COUNTER) và cùng hệ (MIRROR), không áp dụng cho thay đổi chỉ số gốc (base/growth). Confidence: 0.80
+- Trong công cụ test/mô phỏng HTML, hiển thị cả chỉ số gốc (base) và chỉ số sau khi áp dụng khắc chế/cùng hệ (in-combat), phân biệt rõ ràng hai trạng thái để người dùng dễ kiểm tra. Confidence: 0.75
+- Chỉ số gốc ở level 1 cần thể hiện rõ thế mạnh riêng của từng hệ (để vẽ biểu đồ và phục vụ onboarding), nhưng không được để hệ nào quá vượt trội/vô địch — tránh dồn người chơi về một lựa chọn duy nhất. Confidence: 0.70
+- Khi thiết kế bonus khắc chế cho chỉ số tấn công (ATK), ưu tiên dùng giá trị cộng thẳng (+X ATK) thay vì tỉ lệ nhân (+X% damage), vì tỉ lệ nhân kết hợp với cơ chế tăng chỉ số theo cấp (growth system) có thể tạo ra sức mạnh vượt ngoài dự tính ở level cao. Confidence: 0.80
+- Base stats nên dùng số tròn đẹp (bội của 5 hoặc 10) thay vì các giá trị lẻ từ optimizer, đặc biệt ở level 1 — ưu tiên tính thẩm mỹ và dễ nhớ cho người chơi. Confidence: 0.70

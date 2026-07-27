@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Combat Simulator v10 — Full Report 40 Level</title>
+<style>
+:root {
+    --bg: #0f1218; --panel: #1a1f2b; --border: #2a3142;
+    --text: #e6e8ee; --muted: #8a93a6; --accent: #ffcf3f;
+    --s: #ff5e7a; --r: #6aa7ff; --p: #58e58a;
+    --ok: #4ade80; --warn: #ff6b35;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.5; min-height: 100vh; }
+header { background: linear-gradient(135deg, #1a1f2b 0%, #0f1218 100%);
+    border-bottom: 2px solid var(--accent); padding: 20px 28px; position: sticky; top: 0; z-index: 10; }
+header h1 { font-size: 22px; } header h1 span { color: var(--accent); }
+header p { color: var(--muted); font-size: 12px; margin-top: 2px; }
+nav { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+nav a { color: var(--muted); text-decoration: none; font-size: 11px;
+    padding: 4px 12px; border: 1px solid var(--border); border-radius: 14px;
+    transition: all 0.2s; }
+nav a:hover, nav a.active { color: var(--accent); border-color: var(--accent); background: rgba(255,207,63,0.08); }
+main { max-width: 1500px; margin: 0 auto; padding: 20px 28px 60px; }
+.section { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 8px; padding: 20px 24px; margin-bottom: 20px; }
+.section h2 { color: var(--accent); font-size: 14px; text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 16px; }
+.section h3 { color: var(--text); font-size: 13px; margin: 20px 0 10px; }
+.scroll-x { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
+th, td { padding: 4px 7px; text-align: center; border-bottom: 1px solid var(--border); }
+th { background: #0f1218; color: var(--muted); font-weight: 600;
+    text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;
+    position: sticky; top: 0; z-index: 1; }
+th:first-child, td:first-child { text-align: left; font-weight: 600; }
+.s { color: var(--s); } .r { color: var(--r); } .p { color: var(--p); }
+.good { color: var(--ok); } .warn { color: var(--warn); }
+.highlight { background: rgba(255,207,63,0.08); }
+footer { color: var(--muted); text-align: center; font-size: 11px; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+    <h1>🐾 Ling Thú — Combat Simulator <span>v10</span> · Full Report</h1>
+    <p>Báo cáo tổng quan 40 level · Chỉ số gốc · Khắc chế · Cùng hệ</p>
+    <nav>
+        <a href="#stats">📊 Chỉ số 40 Level</a>
+        <a href="#counter">⚡ Giá trị khắc chế</a>
+        <a href="#mirror">🤝 Giá trị cùng hệ</a>
+        <a href="#nội tại">🔥 Nội tại</a>
+        <a href="#growth">📈 Tăng trưởng theo phase</a>
+    </nav>
+</header>
+<main id="content"></main>
+<footer>Combat Simulator v10 · Ling Thú Ecosystem</footer>
+
+<script>
+// ═══════════════ EMBEDDED ENGINE ═══════════════
+const STATS_CFG = {
+    SCISSORS: {
+        base: { hp: 90, atk: 18, def: 2, luck: 7 },
+        growth: { hp: [10,14,10,18], atk: [1.5,2.0,1.0,1.4], def: [0.10,0.15,0.10,0.15], luck: [0.7,0.9,0.5,0.7] }
+    },
+    ROCK: {
+        base: { hp: 110, atk: 13, def: 7, luck: 4 },
+        growth: { hp: [12,16,24,20], atk: [0.9,1.2,1.4,1.1], def: [0.5,0.6,1.1,0.6], luck: [0.25,0.25,0.35,0.25] }
+    },
+    PAPER: {
+        base: { hp: 100, atk: 14, def: 4, luck: 6 },
+        growth: { hp: [14,18,14,22], atk: [1.1,1.3,1.0,1.1], def: [0.2,0.25,0.2,0.25], luck: [0.7,0.5,0.4,0.5] }
+    }
+};
+const COUNTER = {
+    rock_vs_scissors_def:  {1:1,5:5,10:11.5,15:17.5,20:24.7,25:24.7,30:24.7,35:24.7,40:24.7},
+    rock_vs_scissors_hp:   {1:5,5:12,10:24,15:39,20:54,25:54,30:54,35:54,40:54},
+    scissors_vs_paper_atk: {1:0.5,5:1.4,10:5.8,15:11.1,20:13.8,25:20.3,30:31.9,35:31.9,40:31.9},
+    scissors_vs_paper_luck:{1:1,5:2,10:7.4,15:10.8,20:10.8,25:17.3,30:24.8,35:24.8,40:24.8},
+    paper_vs_rock_hp:      {1:5,5:15,10:15,15:15,20:15,25:156,30:323,35:323,40:323},
+    paper_vs_rock_luck:    {1:1,5:2,10:2,15:2,20:2,25:20,30:39.2,35:39.2,40:39.2}
+};
+const MIRROR = {
+    scissors_dmg_mult: {1:0.87,5:0.86,10:0.765,15:0.765,20:0.705,25:0.685,30:0.665,35:0.665,40:0.655},
+    rock_def_mult:     {1:0.01,5:0.235,10:0.29,15:0.385,20:0.41,25:0.35,30:0.305,35:0.42,40:0.555},
+    paper_all_mult:    {1:0.40,5:0.395,10:0.395,15:0.415,20:0.46,25:0.49,30:0.52,35:0.56,40:0.60}
+};
+const PASSIVE = {
+    scissorsCritLow:  {1:1.10,5:1.12,10:1.14,15:1.17,20:1.20,25:1.22,30:1.24,35:1.245,40:1.25},
+    scissorsCritHigh: {1:1.20,5:1.25,10:1.30,15:1.35,20:1.40,25:1.43,30:1.46,35:1.48,40:1.50},
+    rockGuardBase:    {1:0.10,5:0.13,10:0.16,15:0.19,20:0.22,25:0.25,30:0.27,35:0.29,40:0.30},
+    rockGuardLowHp:   {1:0.20,5:0.27,10:0.34,15:0.40,20:0.46,25:0.50,30:0.54,35:0.57,40:0.60},
+    paperHealBase:    {1:0.20,5:0.23,10:0.26,15:0.29,20:0.32,25:0.35,30:0.37,35:0.39,40:0.40},
+    paperHealLowHp:   {1:0.40,5:0.48,10:0.56,15:0.62,20:0.68,25:0.72,30:0.75,35:0.78,40:0.80}
+};
+
+function phaseIdx(lv) { return lv <= 10 ? 0 : lv <= 20 ? 1 : lv <= 30 ? 2 : 3; }
+function statsAtLv(el, lv) {
+    const c = STATS_CFG[el];
+    let hp = c.base.hp, atk = c.base.atk, def = c.base.def, luck = c.base.luck;
+    for (let l = 2; l <= lv; l++) { const p = phaseIdx(l); hp += c.growth.hp[p]; atk += c.growth.atk[p]; def += c.growth.def[p]; luck += c.growth.luck[p]; }
+    return { hp: Math.round(hp*10)/10, atk: Math.round(atk*10)/10, def: Math.round(def*10)/10, luck: Math.round(luck*10)/10 };
+}
+function drRate(def) { if (def <= 0) return 0; return Math.max(0, Math.min(0.95, 1 - Math.pow(0.98, Math.pow(def, 0.8)))); }
+function passiveChance(luck) { if (luck <= 0) return 0; return Math.max(0, Math.min(0.90, 1 - Math.pow(0.99, Math.pow(luck, 0.75)))); }
+function lutAt(table, lv) {
+    const keys = Object.keys(table).map(Number).sort((a,b)=>a-b);
+    if (lv <= keys[0]) return table[keys[0]];
+    if (lv >= keys[keys.length-1]) return table[keys[keys.length-1]];
+    for (let i=0; i<keys.length-1; i++) { if (lv >= keys[i] && lv <= keys[i+1]) { const t = (lv-keys[i])/(keys[i+1]-keys[i]); return table[keys[i]] + (table[keys[i+1]]-table[keys[i]])*t; } }
+    return table[keys[keys.length-1]];
+}
+
+const n1 = x => Number(x).toFixed(1);
+const n2 = x => Number(x).toFixed(2);
+const EL_COLOR = {SCISSORS:'var(--s)',ROCK:'var(--r)',PAPER:'var(--p)'};
+const EL_NAME = {SCISSORS:'✂️ Kéo',ROCK:'🔨 Búa',PAPER:'📄 Bao'};
+const PHASE_NAMES = ['Đầu (2-10)', 'Giữa (11-20)', 'Cuối (21-30)', 'Cuối+ (31-40)'];
+
+// ═══════════════ GENERATE ═══════════════
+function build() {
+    let html = '';
+
+    // ── ① STATS 40 LEVEL ──
+    html += '<section class="section" id="stats"><h2>📊 ① Chỉ số gốc 40 Level</h2>';
+    for (const el of ['SCISSORS','ROCK','PAPER']) {
+        html += `<h3 style="color:${EL_COLOR[el]}">${EL_NAME[el]}</h3><div class="scroll-x"><table><thead><tr>
+            <th>Lv</th><th>HP</th><th>ATK</th><th>DEF</th><th>LUCK</th><th>DR%</th><th>Nội tại%</th>
+            <th>Lv</th><th>HP</th><th>ATK</th><th>DEF</th><th>LUCK</th><th>DR%</th><th>Nội tại%</th>
+        </tr></thead><tbody>`;
+        for (let lv = 1; lv <= 20; lv++) {
+            const a = statsAtLv(el, lv), b = statsAtLv(el, lv + 20);
+            html += `<tr>
+                <td>${lv}</td><td>${n1(a.hp)}</td><td>${n1(a.atk)}</td><td>${n1(a.def)}</td><td>${n1(a.luck)}</td><td>${n1(drRate(a.def)*100)}%</td><td>${n1(passiveChance(a.luck)*100)}%</td>
+                <td>${lv+20}</td><td>${n1(b.hp)}</td><td>${n1(b.atk)}</td><td>${n1(b.def)}</td><td>${n1(b.luck)}</td><td>${n1(drRate(b.def)*100)}%</td><td>${n1(passiveChance(b.luck)*100)}%</td>
+            </tr>`;
+        }
+        html += '</tbody></table></div>';
+    }
+    html += '</section>';
+
+    // ── ② COUNTER VALUES ──
+    html += '<section class="section" id="counter"><h2>⚡ ② Giá trị khắc chế (Counter) theo level</h2>';
+
+    // Búa vs Kéo
+    html += `<h3 style="color:var(--r)">🔨 Búa vs ✂️ Kéo — Búa được tăng DEF + HP</h3><div class="scroll-x"><table><thead><tr>
+        <th>Lv</th><th>Búa gốc HP</th><th>Búa gốc DEF</th><th>+DEF</th><th>+HP</th><th>DEF sau</th><th>HP sau</th><th>DR% sau</th>
+    </tr></thead><tbody>`;
+    for (let lv = 1; lv <= 40; lv++) {
+        const s = statsAtLv('ROCK', lv);
+        const cd = lutAt(COUNTER.rock_vs_scissors_def, lv);
+        const ch = lutAt(COUNTER.rock_vs_scissors_hp, lv);
+        html += `<tr><td>${lv}</td><td>${n1(s.hp)}</td><td>${n1(s.def)}</td><td class="r">+${n1(cd)}</td><td class="r">+${n1(ch)}</td><td>${n1(s.def+cd)}</td><td>${n1(s.hp+ch)}</td><td>${n1(drRate(s.def+cd)*100)}%</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+
+    // Kéo vs Bao
+    html += `<h3 style="color:var(--s)">✂️ Kéo vs 📄 Bao — Kéo được tăng ATK + LUCK (cộng thẳng, không tỉ lệ)</h3><div class="scroll-x"><table><thead><tr>
+        <th>Lv</th><th>Kéo gốc ATK</th><th>Kéo gốc LUCK</th><th>+ATK</th><th>+LUCK</th><th>ATK sau</th><th>LUCK sau</th><th>Nội tại% sau</th>
+    </tr></thead><tbody>`;
+    for (let lv = 1; lv <= 40; lv++) {
+        const s = statsAtLv('SCISSORS', lv);
+        const ca = lutAt(COUNTER.scissors_vs_paper_atk, lv);
+        const cl = lutAt(COUNTER.scissors_vs_paper_luck, lv);
+        html += `<tr><td>${lv}</td><td>${n1(s.atk)}</td><td>${n1(s.luck)}</td><td class="s">+${n1(ca)}</td><td class="s">+${n1(cl)}</td><td>${n1(s.atk+ca)}</td><td>${n1(s.luck+cl)}</td><td>${n1(passiveChance(s.luck+cl)*100)}%</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+
+    // Bao vs Búa
+    html += `<h3 style="color:var(--p)">📄 Bao vs 🔨 Búa — Bao được tăng HP + LUCK</h3><div class="scroll-x"><table><thead><tr>
+        <th>Lv</th><th>Bao gốc HP</th><th>Bao gốc LUCK</th><th>+HP</th><th>+LUCK</th><th>HP sau</th><th>LUCK sau</th><th>Nội tại% sau</th>
+    </tr></thead><tbody>`;
+    for (let lv = 1; lv <= 40; lv++) {
+        const s = statsAtLv('PAPER', lv);
+        const ch = lutAt(COUNTER.paper_vs_rock_hp, lv);
+        const cl = lutAt(COUNTER.paper_vs_rock_luck, lv);
+        html += `<tr><td>${lv}</td><td>${n1(s.hp)}</td><td>${n1(s.luck)}</td><td class="p">+${n1(ch)}</td><td class="p">+${n1(cl)}</td><td>${n1(s.hp+ch)}</td><td>${n1(s.luck+cl)}</td><td>${n1(passiveChance(s.luck+cl)*100)}%</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    html += '</section>';
+
+    // ── ③ MIRROR VALUES ──
+    html += '<section class="section" id="mirror"><h2>🤝 ③ Giá trị cùng hệ (We are family) theo level</h2>';
+
+    // Kéo vs Kéo
+    html += `<h3 style="color:var(--s)">✂️ Kéo vs ✂️ Kéo — Giảm sát thương (dmgMult)</h3><div class="scroll-x"><table><thead><tr>
+        <th>Lv</th><th>Kéo gốc ATK</th><th>dmgMult</th><th>ATK hiệu quả</th><th>Giảm còn</th>
+    </tr></thead><tbody>`;
+    for (let lv = 1; lv <= 40; lv++) {
+        const s = statsAtLv('SCISSORS', lv);
+        const m = lutAt(MIRROR.scissors_dmg_mult, lv);
+        html += `<tr><td>${lv}</td><td>${n1(s.atk)}</td><td class="s">×${n2(m)}</td><td>${n1(s.atk*m)}</td><td>${n1(m*100)}%</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+
+    // Búa vs Búa
+    html += `<h3 style="color:var(--r)">🔨 Búa vs 🔨 Búa — Giảm DEF (defMult)</h3><div class="scroll-x"><table><thead><tr>
+        <th>Lv</th><th>Búa gốc DEF</th><th>defMult</th><th>DEF sau</th><th>DR% gốc</th><th>DR% sau</th>
+    </tr></thead><tbody>`;
+    for (let lv = 1; lv <= 40; lv++) {
+        const s = statsAtLv('ROCK', lv);
+        const m = lutAt(MIRROR.rock_def_mult, lv);
+        html += `<tr><td>${lv}</td><td>${n1(s.def)}</td><td class="r">×${n2(m)}</td><td>${n1(s.def*m)}</td><td>${n1(drRate(s.def)*100)}%</td><td>${n1(drRate(s.def*m)*100)}%</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+
+    // Bao vs Bao
+    html += `<h3 style="color:var(--p)">📄 Bao vs 📄 Bao — Giảm nhẹ toàn bộ chỉ số (allMult)</h3><div class="scroll-x"><table><thead><tr>
+        <th>Lv</th><th>allMult</th><th>HP</th><th>ATK</th><th>DEF</th><th>LUCK</th><th>DR%</th><th>Nội tại%</th>
+    </tr></thead><tbody>`;
+    for (let lv = 1; lv <= 40; lv++) {
+        const s = statsAtLv('PAPER', lv);
+        const m = lutAt(MIRROR.paper_all_mult, lv);
+        html += `<tr><td>${lv}</td><td class="p">×${n2(m)}</td><td>${n1(s.hp*m)}</td><td>${n1(s.atk*m)}</td><td>${n1(s.def*m)}</td><td>${n1(s.luck*m)}</td><td>${n1(drRate(s.def*m)*100)}%</td><td>${n1(passiveChance(s.luck*m)*100)}%</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+    html += '</section>';
+
+    // ── ④ NỘI TẠI ──
+    html += '<section class="section" id="nội tại"><h2>🔥 ④ Giá trị nội tại theo level</h2><div class="scroll-x"><table><thead><tr>';
+    const passKeys = Object.keys(PASSIVE);
+    html += '<th>Lv</th>' + passKeys.map(k => `<th>${k}</th>`).join('') + '</tr></thead><tbody>';
+    for (let lv = 1; lv <= 40; lv++) {
+        html += '<tr><td>' + lv + '</td>' + passKeys.map(k => {
+            const v = lutAt(PASSIVE[k], lv);
+            return `<td>${k.includes('Crit') || k.includes('Guard') || k.includes('Heal') ? n1(v*100)+'%' : n2(v)}</td>`;
+        }).join('') + '</tr>';
+    }
+    html += '</tbody></table></div></section>';
+
+    // ── ⑤ GROWTH THEO PHASE ──
+    html += '<section class="section" id="growth"><h2>📈 ⑤ Tăng trưởng theo phase (mỗi level tăng thêm)</h2>';
+    for (const el of ['SCISSORS','ROCK','PAPER']) {
+        const g = STATS_CFG[el].growth;
+        html += `<h3 style="color:${EL_COLOR[el]}">${EL_NAME[el]}</h3><div class="scroll-x"><table><thead><tr>
+            <th>Phase</th><th>HP/level</th><th>ATK/level</th><th>DEF/level</th><th>LUCK/level</th>
+        </tr></thead><tbody>`;
+        for (let p = 0; p < 4; p++) {
+            html += `<tr><td>${PHASE_NAMES[p]}</td><td>${n1(g.hp[p])}</td><td>${n1(g.atk[p])}</td><td>${n2(g.def[p])}</td><td>${n2(g.luck[p])}</td></tr>`;
+        }
+        html += '</tbody></table></div>';
+    }
+    html += '</section>';
+
+    document.getElementById('content').innerHTML = html;
+}
+
+build();
+</script>
+</body>
+</html>
